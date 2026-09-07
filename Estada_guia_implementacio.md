@@ -1825,6 +1825,25 @@ Jornada.
 - **Camp 4 (POS):** ja cobert per **Comanda** (TPV versàtil a recepció: Spa, bicis, transfers, minibar, minimarket). Estada només rep els càrrecs (room charges).
 - **Camp 6 (Domòtica/IoT):** **projecte separat** — no és core del PMS, requereix hardware i integració física.
 
+### 13.8. Portal del client (com el portal de l'empleat a Jornals)
+
+> **Decisió (Tomeu, 08/09/2026):** Crear un **portal del client** a Estada,
+> anàleg al portal de l'empleat de Jornals, amb informació bidireccional.
+
+**Funcionalitats del portal del client:**
+- **Informació bidireccional:** el client veu la seva estada (reserva, folio, càrrecs) i pot comunicar-se amb l'hotel.
+- **Obertura de porta de l'habitació via mòbil:** el client pot obrir la porta amb el mòbil (integració amb la domòtica/panys).
+- **Validació de càrrecs a l'habitació (crèdits):** el client veu i valida els càrrecs del seu folio en temps real.
+- **Promocions:** l'hotel pot oferir promocions personalitzades al client.
+- **Fidelització:** nivells de fidelitat, punts, avantatges.
+
+**Integració amb l'ecosistema:**
+- El portal del client es connecta amb **Estada** (reserva, folio, càrrecs).
+- L'obertura de porta via mòbil es connecta amb la **domòtica/IoT** (projecte separat).
+- Les promocions i fidelització es basen en el **CRM** (camp 1).
+
+**Ordre d'implementació:** el portal del client és una **fase posterior** (després del core d'Estada). Es pot anar construint a sobre del CRM i el folio.
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
