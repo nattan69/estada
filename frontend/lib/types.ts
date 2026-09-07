@@ -145,7 +145,7 @@ export interface Folio {
   property_id: string;
   reservation_id?: string;
   guest_id?: string;
-  kind: string;
+  kind: FolioKind;
   status: FolioStatus;
   currency: string;
   total_amount: number;
