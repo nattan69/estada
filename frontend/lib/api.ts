@@ -10,7 +10,7 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
-// Mock Data
+// Mock Data for emergency fallback
 const MOCKS = {
   reservations: [
     {
@@ -45,7 +45,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     return await response.json();
   } catch (e) {
     console.warn(`Using mock for ${endpoint} due to error:`, e);
-    // Fallback to mock if available
     const mockKey = endpoint.split('/')[1] as keyof typeof MOCKS;
     if (MOCKS[mockKey]) {
       return MOCKS[mockKey] as any;
@@ -56,27 +55,75 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   reservations: {
-    list: (params: any) => request<Reservation[]>(`/reservations?${new URLSearchParams(params)}`),
+    // GET /reservations?propertyId=...&date=...&status=...
+    list: (params: { propertyId?: string, date?: string, status?: string }) => 
+      request<Reservation[]>(`/reservations?${new URLSearchParams(params)}`),
+    
     get: (id: string) => request<Reservation>(`/reservations/${id}`),
-    create: (data: any) => request<Reservation>(`/reservations`, { method: 'POST', body: JSON.stringify(data) }),
+    
+    create: (data: any) => request<Reservation>(`/reservations`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
+    
     cancel: (id: string) => request<void>(`/reservations/${id}/cancel`, { method: 'POST' }),
     checkIn: (id: string) => request<void>(`/reservations/${id}/check-in`, { method: 'POST' }),
     checkOut: (id: string) => request<void>(`/reservations/${id}/check-out`, { method: 'POST' }),
+    assignRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/assign-room`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ room_id }) 
+    }),
+    changeRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ room_id }) 
+    }),
+  },
+  availability: {
+    // GET /availability?propertyId=...&from=...&to=...&adults=...&children=...&ratePlanId=...
+    search: (params: { propertyId: string, from: string, to: string, adults: number, children?: number, ratePlanId?: string }) => 
+      request<any[]>(`/availability?${new URLSearchParams(params)}`),
+    
+    // POST /availability/quote
+    quote: (data: { property_id: string, check_in: string, check_out: string, adults: number, children: number, rate_plan_id?: string }) => 
+      request<any[]>(`/availability/quote`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(data) 
+      }),
   },
   folios: {
     get: (id: string) => request<Folio>(`/folios/${id}`),
-    addCharge: (id: string, data: any) => request<void>(`/folios/${id}/charges`, { method: 'POST', body: JSON.stringify(data) }),
-    addPayment: (id: string, data: any) => request<void>(`/folios/${id}/payments`, { method: 'POST', body: JSON.stringify(data) }),
+    addCharge: (id: string, data: any) => request<void>(`/folios/${id}/charges`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
+    addPayment: (id: string, data: any) => request<void>(`/folios/${id}/payments`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
     close: (id: string) => request<void>(`/folios/${id}/close`, { method: 'POST' }),
   },
   housekeeping: {
     listTasks: (params: any) => request<HousekeepingTask[]>(`/housekeeping/tasks?${new URLSearchParams(params)}`),
-    updateTask: (id: string, data: any) => request<void>(`/housekeeping/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    updateTask: (id: string, data: any) => request<void>(`/housekeeping/tasks/${id}`, { 
+      method: 'PATCH', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
     completeTask: (id: string) => request<void>(`/housekeeping/tasks/${id}/complete`, { method: 'POST' }),
   },
   rates: {
     list: (params: any) => request<Rate[]>(`/rates?${new URLSearchParams(params)}`),
-    bulkUpsert: (data: any) => request<void>(`/rates/bulk-upsert`, { method: 'POST', body: JSON.stringify(data) }),
+    bulkUpsert: (data: any) => request<void>(`/rates/bulk-upsert`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
   },
   reports: {
     occupancy: (params: any) => request<any>(`/reports/occupancy?${new URLSearchParams(params)}`),
