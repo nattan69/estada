@@ -1,0 +1,32 @@
+export const translations = {
+  ca: {
+    dashboard: 'Dashboard',
+    frontDesk: 'Recepció',
+    reservations: 'Reserves',
+    housekeeping: 'Neteja',
+    rates: 'Tarifes',
+    guests: 'Hòspits',
+    reports: 'Reports',
+    settings: 'Configuració',
+  },
+  es: {
+    dashboard: 'Panel',
+    frontDesk: 'Recepción',
+    reservations: 'Reservas',
+    housekeeping: 'Limpieza',
+    rates: 'Tarifas',
+    guests: 'Huéspedes',
+    reports: 'Informes',
+    settings: 'Configuración',
+  },
+  en: {
+    dashboard: 'Dashboard',
+    frontDesk: 'Front Desk',
+    reservations: 'Reservations',
+    housekeeping: 'Housekeeping',
+    rates: 'Rates',
+    guests: 'Guests',
+    reports: 'Reports',
+    settings: 'Settings',
+  },
+};

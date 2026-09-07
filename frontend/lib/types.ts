@@ -1,0 +1,202 @@
+export type Role = 'owner' | 'admin' | 'manager' | 'reception' | 'housekeeping' | 'accounting';
+
+export type ReservationStatus = 'quote' | 'confirmed' | 'checked_in' | 'checked_out' | 'canceled' | 'no_show';
+export type ReservationSource = 'direct_web' | 'booking_engine' | 'phone' | 'walk_in' | 'ota' | 'channel_manager' | 'corporate' | 'ariadna';
+
+export type RoomStatus = 'clean' | 'dirty' | 'inspected' | 'blocked' | 'out_of_service';
+
+export type FolioStatus = 'open' | 'closed';
+export type FolioItemType = 'room_night' | 'product' | 'service' | 'tax' | 'discount' | 'no_show_fee' | 'pos_charge';
+
+export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded' | 'partially_refunded' | 'canceled';
+
+export type HousekeepingTaskType = 'cleaning' | 'inspection' | 'maintenance' | 'turndown';
+export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'canceled';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+}
+
+export interface User {
+  id: string;
+  tenant_id: string;
+  email: string;
+  name?: string;
+  role: Role;
+  active: boolean;
+}
+
+export interface Property {
+  id: string;
+  tenant_id: string;
+  name: string;
+  code: string;
+  timezone: string;
+  currency: string;
+  address: any;
+  active: boolean;
+}
+
+export interface RoomType {
+  id: string;
+  property_id: string;
+  code: string;
+  name: string;
+  description?: string;
+  max_adults: number;
+  max_children: number;
+  base_occupancy: number;
+  active: boolean;
+}
+
+export interface Room {
+  id: string;
+  property_id: string;
+  room_type_id: string;
+  number: string;
+  floor?: string;
+  status: RoomStatus;
+  active: boolean;
+}
+
+export interface RatePlan {
+  id: string;
+  property_id: string;
+  code: string;
+  name: string;
+  description?: string;
+  min_stay: number;
+  max_stay?: number;
+  policies?: any;
+  active: boolean;
+}
+
+export interface Rate {
+  id: string;
+  room_type_id: string;
+  rate_plan_id: string;
+  date: string;
+  price: number;
+  currency: string;
+  closed_to_arrival: boolean;
+  closed_to_departure: boolean;
+  stop_sell: boolean;
+}
+
+export interface Inventory {
+  id: string;
+  room_type_id: string;
+  date: string;
+  allotment: number;
+  sold: number;
+  blocked: number;
+  overbooking_allowed: number;
+}
+
+export interface Guest {
+  id: string;
+  tenant_id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  document_type?: string;
+  document_number?: string;
+  marketing_opt_in: boolean;
+  notes?: string;
+}
+
+export interface Reservation {
+  id: string;
+  property_id: string;
+  guest_id: string;
+  room_type_id: string;
+  rate_plan_id?: string;
+  assigned_room_id?: string;
+  confirmation_code: string;
+  status: ReservationStatus;
+  source: ReservationSource;
+  check_in: string;
+  check_out: string;
+  adults: number;
+  children: number;
+  total_amount: number;
+  currency: string;
+  notes?: string;
+}
+
+export interface ReservationNight {
+  id: string;
+  reservation_id: string;
+  room_type_id: string;
+  rate_plan_id?: string;
+  date: string;
+  base_rate: number;
+  amount: number;
+  taxes: number;
+  discounts: number;
+}
+
+export interface Folio {
+  id: string;
+  property_id: string;
+  reservation_id?: string;
+  guest_id?: string;
+  kind: string;
+  status: FolioStatus;
+  currency: string;
+  total_amount: number;
+  paid_amount: number;
+  balance: number;
+}
+
+export interface FolioItem {
+  id: string;
+  folio_id: string;
+  type: FolioItemType;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate: number;
+  amount: number;
+  posted_at: string;
+}
+
+export interface Payment {
+  id: string;
+  folio_id: string;
+  provider: string;
+  method?: string;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  external_ref?: string;
+  idempotency_key: string;
+}
+
+export interface HousekeepingTask {
+  id: string;
+  property_id: string;
+  room_id: string;
+  type: HousekeepingTaskType;
+  status: TaskStatus;
+  priority: number;
+  assigned_to_id?: string;
+  created_by_id?: string;
+  due_at?: string;
+  notes?: string;
+  completed_at?: string;
+}
+
+export interface Integration {
+  id: string;
+  property_id: string;
+  type: string;
+  provider: string;
+  credentials: any;
+  settings: any;
+  active: boolean;
+}
