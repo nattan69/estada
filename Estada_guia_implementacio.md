@@ -1780,6 +1780,32 @@ Jornada.
 
 **Ordre d'implementació:** començar per la Fase 1 (VCC), que elimina el risc de targetes caducades.
 
+### 13.6. Control de reserves amb contractes d'agències (Yield & Allotment)
+
+> **Decisió (Tomeu, 08/09/2026):** Mòdul de **Gestió de Contractes de Turoperació
+> (Yield & Allotment Management)** per auditar cada reserva contra les condicions
+> contractuals signades amb l'agència.
+> Document complet: `SISTEMA_CONTRACTES_AGENCIES.md` (carpeta Estada).
+
+**Fase 1 — Contract Rules Engine (parametrització del contracte):**
+- Cupos/Contingents (Allotments), Dies de Release, Garantia (Garantit vs. Lliure), Tarifes i Descomptes, Condicions d'Anul·lació.
+- (Opcional) IA per extreure els paràmetres del PDF del contracte.
+- **Base ja existent:** model `Inventory` (allotment, overbooking_allowed), `RatePlan` (min_stay/max_stay), `_check_restrictions`.
+
+**Fase 2 — Automated Audit (validació automàtica a l'entrada):**
+- Control de Cupó i Release: rebutjar / on request / aplicar PVP.
+- Comprovació de Preus: discrepància → "Pendent de Revisió / Discrepància de Preu".
+
+**Fase 3 — Yield & Allotment Control (optimització):**
+- Alliberament Dinàmic (Dynamic Release) si l'ocupació és alta.
+- Stop Sales automàtics a agències amb venda lliure.
+
+**Fase 4 — Auditoria de liquidació i facturació:**
+- Compara Nights Stayed, No-shows/Late Cancellations, Guarantee Commitments.
+- Genera informe d'auditoria que quadra l'import a facturar.
+
+**Ordre d'implementació:** començar per la Fase 1 (Contract Rules Engine).
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
