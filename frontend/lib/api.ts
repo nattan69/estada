@@ -86,9 +86,9 @@ export const api = {
     search: (params: { propertyId: string, from: string, to: string, adults: number, children?: number, ratePlanId?: string }) => 
       request<any[]>(`/availability?${new URLSearchParams(params)}`),
     
-    // POST /availability/quote
+    // POST /reservations/quote
     quote: (data: { property_id: string, check_in: string, check_out: string, adults: number, children: number, rate_plan_id?: string }) => 
-      request<any[]>(`/availability/quote`, { 
+      request<any[]>(`/reservations/quote`, { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(data) 

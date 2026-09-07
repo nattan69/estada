@@ -7,9 +7,26 @@ from decimal import Decimal
 
 from ...database import get_db
 from ...models.models import Reservation, ReservationNight
-from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate
+from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse
+from ...services.availability_service import search_availability
 
 router = APIRouter()
+
+@router.post("/quote", response_model=List[QuoteResponse])
+def get_quote(payload: QuoteRequest, db: Session = Depends(get_db)):
+    try:
+        results = search_availability(
+            db=db,
+            property_id=payload.property_id,
+            check_in=payload.check_in,
+            check_out=payload.check_out,
+            adults=payload.adults,
+            children=payload.children,
+            rate_plan_id=payload.rate_plan_id
+        )
+        return results
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.get("", response_model=List[ReservationOut])
 def list_reservations(

@@ -40,10 +40,10 @@ app.include_router(inventory.router, prefix='/api/v1/inventory', tags=['Inventor
 app.include_router(availability.router, prefix='/api/v1/availability', tags=['Availability'])
 app.include_router(reservations.router, prefix='/api/v1/reservations', tags=['Reservations'])
 app.include_router(folios.router, prefix='/api/v1/folios', tags=['Folios'])
-app.include_router(housekeeping.router, prefix='/api/v1/housekeeping', tags=['Housekeeping'])
+app.include_router(housekeeping.router, prefix='/api/v1/housekeeping/tasks', tags=['Housekeeping'])
 app.include_router(reports.router, prefix='/api/v1/reports', tags=['Reports'])
 app.include_router(fiscal.router, prefix='/api/v1/fiscal', tags=['Fiscal'])
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=8001)
