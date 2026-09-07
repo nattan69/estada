@@ -1731,6 +1731,30 @@ Si en el futur Estada necessita gestio de personal propi (recepcionistes,
 housekeeping), es gestionara internament amb el model `User` + RBAC, no via
 Jornada.
 
+### 13.4. Reserves d'agències (OTAs, GDS, agències tradicionals)
+
+> **Decisió (Tomeu, 08/09/2026):** Sistema de càrrega de reserves d'agències
+> en **3 fases**: Webhooks, Parseig intel·ligent (OCR/IA) i Processament agentic.
+> Document complet: `SISTEMA_RESERVES_AGENCIES.md` (carpeta Estada).
+
+**Fase 1 — Webhooks (el nucli):**
+- Estada exposa `POST /integrations/ota/webhook`.
+- El Channel Manager/OTA envia l'event instantani quan entra una reserva.
+- Estada crea la reserva en temps real (idempotent per `external_id`).
+- Sincronització de disponibilitat bidireccional → elimina gairebé el 100% del risc d'overbooking.
+- **Base ja existent:** model `WebhookEvent` (secció 5), `ReservationSource.OTA`, `IntegrationType.CHANNEL_MANAGER`.
+
+**Fase 2 — Parseig intel·ligent (OCR/IA):**
+- Per a agències tradicionals que envien PDF/email/bons (sense API estàndard).
+- Un agent d'IA llegeix el correu/adjunt, extreu les dades (dates, habitació, règim, tarifa, peticions) i les volca a Estada via API.
+
+**Fase 3 — Processament agentic:**
+- La IA processa la reserva de manera autònoma:
+  - Assigna observacions (alergia, llegada de madrugada) a recepció/housekeeping.
+  - Detecta duplicats i frau (valida la targeta de garantia).
+
+**Ordre d'implementació:** començar per la Fase 1 (Webhooks), que desbloqueja el valor més gran (overbooking) i encaixa amb el patró d'integracions existent.
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
