@@ -1755,6 +1755,31 @@ Jornada.
 
 **Ordre d'implementació:** començar per la Fase 1 (Webhooks), que desbloqueja el valor més gran (overbooking) i encaixa amb el patró d'integracions existent.
 
+### 13.5. Cobrament i liquidació de factures d'agències
+
+> **Decisió (Tomeu, 08/09/2026):** Sistema de cobrament i liquidació de factures
+> d'agències en **3 fases**: VCC, Conciliació bancària i Comissions/Net-Gross.
+> Document complet: `SISTEMA_COBRAMENT_AGENCIES.md` (carpeta Estada).
+
+**Fase 1 — Cobrament automàtic de Targetes Virtuals (VCC):**
+- Quan les agències (Booking, Expedia, Agoda) usen el model **Merchant**, envien una **VCC** amb l'import exacte i una data d'activació.
+- El PMS integra la **passarel·la de pagament nativa** (Adyen/Stripe) i la connexió amb el **Channel Manager**.
+- Quan arriba el moment d'activació, el PMS demana el cobrament **100% automàtic i en l'ombra**.
+- **Control d'imports**: la passarel·la valida que l'import coincideixi amb la **tarifa neta negociada**.
+- **Base ja existent:** model `Payment` + `PaymentStatus`, passarel·la Stripe/Adyen (secció 2).
+
+**Fase 2 — Conciliació bancària automàtica (Auto-Reconciliation):**
+- Per a agències que paguen per **transferència bancària en massa** (turoperadors, agències tradicionals).
+- El PMS usa **algorismes d'IA** per al creuament de pagaments connectats a la **banca oberta (Open Banking)**.
+- **Lectura de justificants**: la IA llegeix els extractes bancaris o fitxers de liquidació (remittance advice) en PDF/Excel, identifica les referències de les reserves i paga automàticament cada factura i folio.
+
+**Fase 3 — Gestió de comissions i Net/Gross automatic settlement:**
+- El sistema calcula i liquida en temps real la diferència entre el preu **Brut** i el preu **Net** (descomptant la comissió de l'agència).
+- **Facturació automàtica**: quan el pagament s'efectua, el PMS genera la factura rectificativa per la comissió i l'envia a l'ERP de l'hotel.
+- **Control de discrepàncies**: si l'agència aplica un descompte no autoritzat o una comissió errònia, el sistema ho detecta a l'instant (discrepancy alert).
+
+**Ordre d'implementació:** començar per la Fase 1 (VCC), que elimina el risc de targetes caducades.
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
