@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from .config import settings
 from .database import engine, Base
 from .models import models  # Importar modelos para que SQLAlchemy los registre
-from .api.routes import auth, properties, room_types
+from .api.routes import auth, properties, room_types, rooms, rate_plans
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,6 +33,8 @@ def health():
 app.include_router(auth.router, prefix='/api/v1/auth', tags=['Auth'])
 app.include_router(properties.router, prefix='/api/v1/properties', tags=['Properties'])
 app.include_router(room_types.router, prefix='/api/v1/room-types', tags=['Room Types'])
+app.include_router(rooms.router, prefix='/api/v1/rooms', tags=['Rooms'])
+app.include_router(rate_plans.router, prefix='/api/v1/rate-plans', tags=['Rate Plans'])
 
 if __name__ == '__main__':
     import uvicorn
