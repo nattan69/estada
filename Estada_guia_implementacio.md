@@ -1806,6 +1806,25 @@ Jornada.
 
 **Ordre d'implementació:** començar per la Fase 1 (Contract Rules Engine).
 
+### 13.7. Àrees clau del PMS (on van els 6 camps)
+
+> **Decisió (Tomeu, 08/09/2026):** Distribució dels 6 camps d'un PMS modern
+> entre Estada, Comanda i un projecte separat de Domòtica/IoT.
+
+| Camp | On va | Estat |
+|---|---|---|
+| **1. Perfils de Clients i CRM** | **Estada** (Fase 1) | Model `Guest` ja existeix |
+| **2. Housekeeping & Manteniment** | **Estada** (Fase 1) | API de housekeeping ja existeix |
+| **3. Revenue Management** | **Estada** (Fase 1) | rates, rate-plans, inventory ja existeixen |
+| **4. Serveis addicionals i POS** | **Comanda** (ja cobert) | TPV versàtil a recepció: Spa, lloguers de bicis, transfers, minibar, minimarket. Estada només rep els room charges |
+| **5. Night Audit & Reporting** | **Estada** (Fase 1) | Previst (Fase 5 workers) |
+| **6. Integracions i Domòtica (IoT)** | **Projecte separat** | Requereix hardware/integració física |
+
+**Resum:**
+- **A Estada (Fase 1):** camps **1, 2, 3 i 5** (CRM, Housekeeping, Revenue, Night Audit) — el core comercial i financer.
+- **Camp 4 (POS):** ja cobert per **Comanda** (TPV versàtil a recepció: Spa, bicis, transfers, minibar, minimarket). Estada només rep els càrrecs (room charges).
+- **Camp 6 (Domòtica/IoT):** **projecte separat** — no és core del PMS, requereix hardware i integració física.
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
