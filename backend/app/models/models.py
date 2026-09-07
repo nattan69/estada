@@ -507,6 +507,7 @@ class AuditLog(Base):
     __table_args__ = (Index("ix_audit_tenant_entity", "tenant_id", "entity", "entity_id"),)
 
 
+
 class OutboxEvent(Base):
     __tablename__ = "outbox_events"
     id = uuid_pk()
@@ -522,3 +523,44 @@ class OutboxEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (Index("ix_outbox_status_avail", "status", "available_at"),)
+
+class FiscalRecord(Base):
+    __tablename__ = "fiscal_records"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id"), nullable=False)
+    folio_id = Column(UUID(as_uuid=True), ForeignKey("folios.id"), nullable=False)
+
+    invoice_number = Column(String, nullable=False, unique=True)
+    invoice_type = Column(String, nullable=False)
+    total = Column(Numeric(12, 2), nullable=False)
+    base_imponible = Column(Numeric(12, 2), nullable=False)
+    iva = Column(Numeric(12, 2), nullable=False)
+    irpf = Column(Numeric(12, 2), default=0)
+    vat_breakdown = Column(JSON, nullable=False, default=list)
+    payload = Column(Text, nullable=False)
+    previous_hash = Column(String, nullable=False)
+    payload_hash = Column(String, nullable=False)
+    hash = Column(String, nullable=False)
+    issued_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    property = relationship("Property")
+    folio = relationship("Folio")
+
+    __table_args__ = (
+        Index("ix_fiscal_prop_issued", "property_id", "issued_at"),
+        Index("ix_fiscal_invoice", "invoice_number", unique=True),
+    )
+
+
+class FiscalSequence(Base):
+    __tablename__ = "fiscal_sequences"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    year = Column(Integer, nullable=False)
+    last_number = Column(Integer, default=0)
+
+    property = relationship("Property")
+
+    __table_args__ = (
+        Index("ix_fiscal_seq_prop_year", "property_id", "year", unique=True),
+    )

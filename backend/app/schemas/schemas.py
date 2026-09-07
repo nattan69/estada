@@ -508,9 +508,17 @@ class QuoteResponse(AvailabilityResponse):
 class FiscalRecordOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
+    property_id: UUID
     folio_id: UUID
-    record_id: str
-    chain_hash: str
-    previous_chain_hash: Optional[str] = None
-    record_type: str
-    issued_at: datetime
+    invoice_number: str
+    invoice_type: str
+    total: Decimal
+    base_imponible: Decimal
+    iva: Decimal
+    irpf: Decimal = Decimal("0")
+    vat_breakdown: list = []
+    payload: str
+    previous_hash: str
+    payload_hash: str
+    hash: str
+    issued_at: Optional[datetime] = None
