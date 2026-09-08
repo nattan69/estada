@@ -97,14 +97,14 @@ export default function IntegrationsSettingsPage() {
   };
 
   return (
-    <div className=\"p-6 space-y-8 bg-[#1a1a2e] min-h-screen text-white\">
-      <div className=\"flex justify-between items-center\">
-        <h1 className=\"text-3xl font-bold text-white\">
-          {translations[lang].settings} <span className=\"text-[#e2b04a]\">— Integracions</span>
+    <div className="p-6 space-y-8 bg-[#1a1a2e] min-h-screen text-white">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-white">
+          {translations[lang].settings} <span className="text-[#e2b04a]">— Integracions</span>
         </h1>
         
         {/* Selector d'idioma simplificat */}
-        <div className=\"flex gap-2\">
+        <div className="flex gap-2">
           {(['ca', 'es', 'en'] as const).map((l) => (
             <button
               key={l}
@@ -119,30 +119,30 @@ export default function IntegrationsSettingsPage() {
         </div>
       </div>
 
-      <div className=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6\">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {integrations.map((int) => (
           <div 
             key={int.id} 
-            className=\"bg-[#16213e] border border-[#e2b04a]/20 rounded-xl p-5 hover:border-[#e2b04a]/50 transition-all group shadow-lg\"
+            className="bg-[#16213e] border border-[#e2b04a]/20 rounded-xl p-5 hover:border-[#e2b04a]/50 transition-all group shadow-lg"
           >
-            <div className=\"flex justify-between items-start mb-4\">
-              <div className=\"text-3xl\">{int.icon}</div>
-              <div className=\"flex items-center gap-2\">
+            <div className="flex justify-between items-start mb-4">
+              <div className="text-3xl">{int.icon}</div>
+              <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${statusColors[int.status]}`} />
-                <span className=\"text-xs font-medium text-gray-400\">
+                <span className="text-xs font-medium text-gray-400">
                   {statusLabels[lang][int.status]}
                 </span>
               </div>
             </div>
 
-            <h3 className=\"text-xl font-semibold text-white mb-2 group-hover:text-[#e2b04a] transition-colors\">
+            <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-[#e2b04a] transition-colors">
               {int.name[lang]}
             </h3>
-            <p className=\"text-gray-400 text-sm mb-6 leading-relaxed\">
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
               {int.description[lang]}
             </p>
 
-            <button className=\"w-full py-2 px-4 bg-transparent border border-[#e2b04a] text-[#e2b04a] rounded-lg text-sm font-bold hover:bg-[#e2b04a] hover:text-[#1a1a2e] transition-all\">
+            <button className="w-full py-2 px-4 bg-transparent border border-[#e2b04a] text-[#e2b04a] rounded-lg text-sm font-bold hover:bg-[#e2b04a] hover:text-[#1a1a2e] transition-all">
               {lang === 'ca' ? 'Configurar' : lang === 'es' ? 'Configurar' : 'Configure'}
             </button>
           </div>

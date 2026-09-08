@@ -12,11 +12,8 @@ export function FolioTable({ folioId, onRefresh }: { folioId: string, onRefresh:
   async function loadItems() {
     setLoading(true);
     try {
-      const folio = await api.folios.get(folioId);
-      // Assuming folio object contains the charges/payments list, or we'd need a specific endpoint.
-      // In api.ts we only have get(id) for the folio. 
-      // If get(id) returns the folio with its charges, we use that.
-      setItems(folio.charges || []);
+      const items = await api.folios.listItems(folioId);
+      setItems(items || []);
     } catch (e) {
       console.error('Error loading folio items:', e);
     } finally {
@@ -44,7 +41,7 @@ export function FolioTable({ folioId, onRefresh }: { folioId: string, onRefresh:
           ) : (
             items.map((item, i) => (
               <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                <td className="p-3 text-sm">{item.date || 'N/A'}</td>
+                <td className="p-3 text-sm">{item.posted_at ? new Date(item.posted_at).toLocaleDateString() : 'N/A'}</td>
                 <td className="p-3 text-sm">{item.description}</td>
                 <td className="p-3 text-sm text-right font-mono">{item.amount}€</td>
               </tr>

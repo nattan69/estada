@@ -1,6 +1,7 @@
 import { 
   Reservation, 
   Folio, 
+  FolioItem, 
   HousekeepingTask, 
   Rate, 
   Property, 
@@ -84,7 +85,14 @@ export const api = {
   availability: {
     // GET /availability?propertyId=...&from=...&to=...&adults=...&children=...&ratePlanId=...
     search: (params: { propertyId: string, from: string, to: string, adults: number, children?: number, ratePlanId?: string }) => 
-      request<any[]>(`/availability?${new URLSearchParams(params)}`),
+      request<any[]>(`/availability?${new URLSearchParams({
+        propertyId: params.propertyId,
+        from: params.from,
+        to: params.to,
+        adults: String(params.adults),
+        ...(params.children !== undefined ? { children: String(params.children) } : {}),
+        ...(params.ratePlanId ? { ratePlanId: params.ratePlanId } : {}),
+      })}`),
     
     // POST /reservations/quote
     quote: (data: { property_id: string, check_in: string, check_out: string, adults: number, children: number, rate_plan_id?: string }) => 
@@ -96,6 +104,7 @@ export const api = {
   },
   folios: {
     get: (id: string) => request<Folio>(`/folios/${id}`),
+    listItems: (id: string) => request<FolioItem[]>(`/folios/${id}/items`),
     addCharge: (id: string, data: any) => request<void>(`/folios/${id}/charges`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 

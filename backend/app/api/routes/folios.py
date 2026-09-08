@@ -18,6 +18,13 @@ def get_folio(folio_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Folio no encontrado")
     return folio
 
+@router.get("/{folio_id}/items", response_model=List[FolioItemOut])
+def list_folio_items(folio_id: UUID, db: Session = Depends(get_db)):
+    folio = db.get(Folio, folio_id)
+    if not folio:
+        raise HTTPException(status_code=404, detail="Folio no encontrado")
+    return folio.items
+
 @router.post("/{folio_id}/charges", response_model=FolioItemOut)
 def add_charge(folio_id: UUID, payload: ChargeCreate, db: Session = Depends(get_db)):
     folio = db.get(Folio, folio_id)

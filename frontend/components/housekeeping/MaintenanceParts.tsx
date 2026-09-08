@@ -166,7 +166,7 @@ export default function MaintenanceParts() {
                 value={formData.type} 
                 onChange={e => setFormData({...formData, type: e.target.value})}
                 className="w-full p-2 border rounded-md bg-white text-slate-800 focus:ring-2 focus:ring-[#e2b04a]"
-                placeholder={lang === 'ca' ? 'ex: Aire condicionat' : lang === 'es' ? 'ej: Aire acondicionado' : 'e.g. Air conditioning'}"
+                placeholder={lang === 'ca' ? 'ex: Aire condicionat' : lang === 'es' ? 'ej: Aire acondicionado' : 'e.g. Air conditioning'}
                 required
               />
             </div>

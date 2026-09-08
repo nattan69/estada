@@ -6,6 +6,7 @@ export type ReservationSource = 'direct_web' | 'booking_engine' | 'phone' | 'wal
 export type RoomStatus = 'clean' | 'dirty' | 'inspected' | 'blocked' | 'out_of_service';
 
 export type FolioStatus = 'open' | 'closed';
+export type FolioKind = 'reservation' | 'guest' | 'city_ledger' | 'house' | string;
 export type FolioItemType = 'room_night' | 'product' | 'service' | 'tax' | 'discount' | 'no_show_fee' | 'pos_charge';
 
 export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded' | 'partially_refunded' | 'canceled';
