@@ -81,6 +81,11 @@ export const api = {
       body: JSON.stringify(data)
     }),
   },
+  rooms: {
+    list: (params?: { propertyId?: string }) => 
+      request<Room[]>(`/rooms${params?.propertyId ? `?${new URLSearchParams({ propertyId: params.propertyId })}` : ''}`),
+    get: (id: string) => request<Room>(`/rooms/${id}`),
+  },
   reservations: {
     list: (params: { propertyId?: string, date?: string, status?: string }) => 
       request<Reservation[]>(`/reservations?${new URLSearchParams(params)}`),
