@@ -1879,11 +1879,10 @@ Jornada.
   i passar el part al servei tècnic.
 - **Seguiment de l'estat de la reparació:** visualitzar en temps real l'estat de
   cada reparació (pendent, en curs, en espera de peça, resolt).
-- **Bloqueig automàtic de l'habitació:** si l'avaria ho requereix, l'habitació
-  es marca com a *Out of Order* / *Fora de servei*.
-- **Bloqueig d'habitacions pendent de reparació:** l'habitació queda **bloquejada
-  i no es pot assignar ni vendre** fins que la reparació estigui resolta, evitant
-  que un client ocupe una habitació en mal estat.
+- **Bloqueig automàtic de l'habitació pendent de reparació:** l'habitació amb una
+  avaria no resolta queda **bloquejada (Out of Order / Fora de servei)** i no es
+  pot assignar ni vendre fins que la reparació estigui resolta, evitant que un
+  client ocupe una habitació en mal estat.
 - **Notificació al servei tècnic:** avís automàtic quan es registra una avaria.
 
 **Model (proposta):**
