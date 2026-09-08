@@ -6,7 +6,9 @@ import {
   Rate, 
   Property, 
   Room, 
-  Guest 
+  Guest,
+  FiscalRecord,
+  ChainVerifyResponse
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -36,7 +38,35 @@ const MOCKS = {
   ],
   folios: [
     { id: 'fol-1', property_id: 'prop-1', reservation_id: 'res-1', guest_id: 'gst-1', kind: 'reservation', status: 'open', currency: 'EUR', total_amount: 500, paid_amount: 0, balance: 500 },
-  ]
+  ],
+  fiscal: {
+    records: [
+      {
+        id: 'fisc-1',
+        property_id: 'prop-1',
+        folio_id: 'fol-1',
+        invoice_number: 'SEQ-2026-00001',
+        invoice_type: 'simplified',
+        total: 540,
+        base_imponible: 450,
+        iva: 90,
+        irpf: 0,
+        vat_breakdown: [
+          { rate: 10, base: 450, tax: 45 },
+          { rate: 10, base: 450, tax: 45 }, // simplified example
+        ],
+        payload: { customer: 'Guest 1', items: ['Stay'] },
+        previous_hash: '0000000000000000',
+        payload_hash: 'hash-p1',
+        hash: 'hash-1',
+        issued_at: '2026-09-01T10:00:00Z',
+      }
+    ] as FiscalRecord[],
+    verify: {
+      valid: true,
+      total_records: 1,
+    } as ChainVerifyResponse,
+  }
 };
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -46,6 +76,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     return await response.json();
   } catch (e) {
     console.warn(`Using mock for ${endpoint} due to error:`, e);
+    
+    // Enhanced mock lookup for nested structures like api.fiscal.listRecords
+    if (endpoint.startsWith('/fiscal/records')) {
+        if (endpoint.includes('/records/')) {
+            return MOCKS.fiscal.records[0] as any;
+        }
+        return MOCKS.fiscal.records as any;
+    }
+    if (endpoint.startsWith('/fiscal/chain/verify')) {
+        return MOCKS.fiscal.verify as any;
+    }
+
     const mockKey = endpoint.split('/')[1] as keyof typeof MOCKS;
     if (MOCKS[mockKey]) {
       return MOCKS[mockKey] as any;
@@ -72,7 +114,7 @@ export const api = {
       },
       body: JSON.stringify(data)
     }),
-    vccCharge: (data: any) => request<any>(`/integrations/payments/vcc`, {
+    vccCharge: (data: any) => request<any>(`/integrations/payments`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -163,5 +205,13 @@ export const api = {
     revenue: (params: any) => request<any>(`/reports/revenue?${new URLSearchParams(params)}`),
     arrivals: (params: any) => request<any>(`/reports/front-desk/arrivals?${new URLSearchParams(params)}`),
     departures: (params: any) => request<any>(`/reports/front-desk/departures?${new URLSearchParams(params)}`),
+  },
+  fiscal: {
+    listRecords: (params: { propertyId?: string, from?: string, to?: string }) => 
+      request<FiscalRecord[]>(`/api/v1/fiscal/records?${new URLSearchParams(params)}`),
+    getRecord: (id: string) => 
+      request<FiscalRecord>(`/api/v1/fiscal/records/${id}`),
+    verifyChain: (propertyId: string) => 
+      request<ChainVerifyResponse>(`/api/v1/fiscal/chain/verify?${new URLSearchParams({ propertyId })}`),
   }
 };

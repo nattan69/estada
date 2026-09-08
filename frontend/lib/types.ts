@@ -194,18 +194,32 @@ export interface HousekeepingTask {
 
 export type MaintenanceStatus = 'pendent' | 'en_curs' | 'en_espera_peca' | 'resolt' | 'cancelat';
 
-export interface MaintenanceTask {
+export interface FiscalRecord {
   id: string;
   property_id: string;
-  room_id: string;
-  type: string; // tipus d'avaria: aixeta, aire, llum, etc.
-  description: string;
-  priority: number; // 1-5
-  status: MaintenanceStatus;
-  assigned_to_id?: string; // tècnic SSTT
-  created_by_id: string;
-  reported_at: string;
-  resolved_at?: string;
-  created_at: string;
-  updated_at: string;
+  folio_id: string;
+  invoice_number: string;
+  invoice_type: string;
+  total: number;
+  base_imponible: number;
+  iva: number;
+  irpf: number;
+  vat_breakdown: Array<{
+    rate: number;
+    base: number;
+    tax: number;
+  }>;
+  payload: any;
+  previous_hash: string;
+  payload_hash: string;
+  hash: string;
+  issued_at: string;
 }
+
+export interface ChainVerifyResponse {
+  valid: boolean;
+  total_records?: number;
+  broken_at?: string;
+  reason?: string;
+}
+
