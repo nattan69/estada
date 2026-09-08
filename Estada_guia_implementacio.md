@@ -1881,6 +1881,9 @@ Jornada.
   cada reparació (pendent, en curs, en espera de peça, resolt).
 - **Bloqueig automàtic de l'habitació:** si l'avaria ho requereix, l'habitació
   es marca com a *Out of Order* / *Fora de servei*.
+- **Bloqueig d'habitacions pendent de reparació:** l'habitació queda **bloquejada
+  i no es pot assignar ni vendre** fins que la reparació estigui resolta, evitant
+  que un client ocupe una habitació en mal estat.
 - **Notificació al servei tècnic:** avís automàtic quan es registra una avaria.
 
 **Model (proposta):**
@@ -1888,6 +1891,8 @@ Jornada.
   estat, tècnic assignat, dates).
 - Estats: `pendent`, `en_curs`, `en_espera_peca`, `resolt`, `cancelat`.
 - Relació amb `Room` (l'habitació afectada) i amb `User` (el tècnic assignat).
+- Quan una tasca de manteniment està en estat no resolt, la `Room` queda marcada
+  com a `BLOCKED` / `OUT_OF_SERVICE` i no es pot assignar ni incloure a la venda.
 
 **Integració amb l'ecosistema:**
 - Dins del mòdul de **Housekeeping** d'Estada (camp 2).
