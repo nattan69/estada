@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from .config import settings
 from .database import engine, Base
 from .models import models  # Importar modelos para que SQLAlchemy los registre
-from .api.routes import auth, properties, room_types, rooms, rate_plans, rates, inventory, availability, reservations, folios, housekeeping, maintenance, reports, fiscal, tenants, guests, integrations, users, outbox
+from .api.routes import auth, properties, room_types, rooms, rate_plans, rates, inventory, availability, reservations, folios, housekeeping, maintenance, reports, fiscal, tenants, guests, integrations, users, outbox, night_audit
 from .database import SessionLocal
 from .services.bootstrap import bootstrap
 
@@ -54,6 +54,7 @@ app.include_router(guests.router, prefix='/api/v1/guests', tags=['Guests'])
 app.include_router(integrations.router, prefix='/api/v1/integrations', tags=['Integrations'])
 app.include_router(users.router, prefix='/api/v1/users', tags=['Users'])
 app.include_router(outbox.router, prefix='/api/v1/outbox', tags=['Outbox'])
+app.include_router(night_audit.router, prefix='/api/v1/night-audit', tags=['Night Audit'])
 
 if __name__ == '__main__':
     import uvicorn

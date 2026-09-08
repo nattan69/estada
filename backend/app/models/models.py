@@ -604,3 +604,30 @@ class FiscalSequence(Base):
     __table_args__ = (
         Index("ix_fiscal_seq_prop_year", "property_id", "year", unique=True),
     )
+
+
+class NightAudit(Base):
+    """Tancament de caixa diari (Night Audit).
+
+    Registra cada execució del tancament per a un property i una data de
+    negoci. El `summary` (JSON) guarda el resum: nits postades, revenue,
+    no-shows, check-outs, folios tancats i ocupació.
+    """
+    __tablename__ = "night_audits"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    audit_date = Column(Date, nullable=False)
+    status = Column(String, default="running")  # running | completed | failed
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True))
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    summary = Column(JSON)
+    error = Column(Text)
+
+    property = relationship("Property")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        Index("ix_night_audit_prop_date", "property_id", "audit_date", unique=True),
+        Index("ix_night_audit_prop_status", "property_id", "status"),
+    )

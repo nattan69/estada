@@ -614,3 +614,42 @@ class VccChargeCreate(BaseModel):
     external_ref: Optional[str] = None
     idempotency_key: Optional[str] = None
     activation_date: Optional[date] = None
+
+
+# ============================================================
+# NIGHT AUDIT
+# ============================================================
+class NightAuditRunRequest(BaseModel):
+    """Petició per llançar el tancament de caixa d'un property."""
+    property_id: UUID
+    audit_date: Optional[date] = None  # per defecte: avui
+
+
+class NightAuditSummary(BaseModel):
+    """Resum del tancament de caixa (es guarda al camp `summary` JSON)."""
+    audit_date: date
+    rooms_total: int = 0
+    rooms_occupied: int = 0
+    occupancy_pct: Decimal = Decimal("0")
+    arrivals: int = 0
+    departures: int = 0
+    no_shows: int = 0
+    nights_posted: int = 0
+    room_revenue: Decimal = Decimal("0")
+    other_revenue: Decimal = Decimal("0")
+    total_revenue: Decimal = Decimal("0")
+    folios_closed: int = 0
+    folios_open: int = 0
+
+
+class NightAuditOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    property_id: UUID
+    audit_date: date
+    status: str
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_by_id: Optional[UUID] = None
+    summary: Optional[dict] = None
+    error: Optional[str] = None
