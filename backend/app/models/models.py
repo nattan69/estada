@@ -85,6 +85,13 @@ class TaskStatus(str, enum.Enum):
     DONE = "done"
     CANCELED = "canceled"
 
+class MaintenanceStatus(str, enum.Enum):
+    PENDENT = "pendent"
+    EN_CURS = "en_curs"
+    EN_ESPERA_PECA = "en_espera_peca"
+    RESOLT = "resolt"
+    CANCELAT = "cancelat"
+
 class IntegrationType(str, enum.Enum):
     PAYMENTS = "payments"
     CHANNEL_MANAGER = "channel_manager"
@@ -155,6 +162,7 @@ class Property(Base):
     reservations = relationship("Reservation", back_populates="property")
     folios = relationship("Folio", back_populates="property")
     housekeeping_tasks = relationship("HousekeepingTask", back_populates="property", cascade="all, delete-orphan")
+    maintenance_tasks = relationship("MaintenanceTask", back_populates="property", cascade="all, delete-orphan")
     integrations = relationship("Integration", back_populates="property", cascade="all, delete-orphan")
 
     __table_args__ = (Index("ix_properties_tenant_code", "tenant_id", "code", unique=True),)
@@ -200,6 +208,7 @@ class Room(Base):
     room_type = relationship("RoomType", back_populates="rooms")
     reservations = relationship("Reservation", back_populates="assigned_room")
     tasks = relationship("HousekeepingTask", back_populates="room")
+    maintenance_tasks = relationship("MaintenanceTask", back_populates="room")
 
     __table_args__ = (
         Index("ix_rooms_prop_number", "property_id", "number", unique=True),
@@ -449,6 +458,33 @@ class HousekeepingTask(Base):
     __table_args__ = (
         Index("ix_hk_prop_status", "property_id", "status"),
         Index("ix_hk_room_status", "room_id", "status"),
+    )
+
+
+class MaintenanceTask(Base):
+    __tablename__ = "maintenance_tasks"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String, nullable=False)
+    description = Column(Text)
+    priority = Column(Integer, default=3)
+    status = Column(String, default=MaintenanceStatus.PENDENT.value)
+    assigned_to_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reported_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    property = relationship("Property")
+    room = relationship("Room")
+    assignee = relationship("User", foreign_keys=[assigned_to_id])
+    creator = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        Index("ix_maint_prop_status", "property_id", "status"),
+        Index("ix_maint_room_status", "room_id", "status"),
     )
 
 

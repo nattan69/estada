@@ -407,6 +407,37 @@ class HousekeepingTaskOut(HousekeepingTaskBase):
     updated_at: Optional[datetime] = None
 
 # ============================================================
+# MAINTENANCE
+# ============================================================
+class MaintenanceTaskBase(BaseModel):
+    property_id: UUID
+    room_id: UUID
+    type: str
+    description: Optional[str] = None
+    priority: int = 3
+    status: str = "pendent"
+    assigned_to_id: Optional[UUID] = None
+    created_by_id: Optional[UUID] = None
+
+class MaintenanceTaskCreate(MaintenanceTaskBase):
+    pass
+
+class MaintenanceTaskUpdate(BaseModel):
+    type: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[int] = None
+    status: Optional[str] = None
+    assigned_to_id: Optional[UUID] = None
+
+class MaintenanceTaskOut(MaintenanceTaskBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    reported_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# ============================================================
 # INTEGRATIONS & EVENTS
 # ============================================================
 class IntegrationBase(BaseModel):

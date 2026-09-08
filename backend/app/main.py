@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from .config import settings
 from .database import engine, Base
 from .models import models  # Importar modelos para que SQLAlchemy los registre
-from .api.routes import auth, properties, room_types, rooms, rate_plans, rates, inventory, availability, reservations, folios, housekeeping, reports, fiscal, tenants, guests
+from .api.routes import auth, properties, room_types, rooms, rate_plans, rates, inventory, availability, reservations, folios, housekeeping, maintenance, reports, fiscal, tenants, guests
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,6 +41,7 @@ app.include_router(availability.router, prefix='/api/v1/availability', tags=['Av
 app.include_router(reservations.router, prefix='/api/v1/reservations', tags=['Reservations'])
 app.include_router(folios.router, prefix='/api/v1/folios', tags=['Folios'])
 app.include_router(housekeeping.router, prefix='/api/v1/housekeeping/tasks', tags=['Housekeeping'])
+app.include_router(maintenance.router, prefix='/api/v1/maintenance', tags=['Maintenance'])
 app.include_router(reports.router, prefix='/api/v1/reports', tags=['Reports'])
 app.include_router(fiscal.router, prefix='/api/v1/fiscal', tags=['Fiscal'])
 app.include_router(tenants.router, prefix='/api/v1/tenants', tags=['Tenants'])
