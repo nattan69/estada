@@ -25,7 +25,7 @@ class TenantOut(TenantBase):
 # USER
 # ============================================================
 class UserBase(BaseModel):
-    tenant_id: UUID
+    tenant_id: Optional[UUID] = None
     email: str
     name: Optional[str] = None
     role: str = "reception"
@@ -504,6 +504,9 @@ class OutboxEventOut(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 class TokenResponse(BaseModel):
     access_token: str

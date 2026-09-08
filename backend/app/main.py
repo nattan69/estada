@@ -4,13 +4,18 @@ from contextlib import asynccontextmanager
 from .config import settings
 from .database import engine, Base
 from .models import models  # Importar modelos para que SQLAlchemy los registre
-from .api.routes import auth, properties, room_types, rooms, rate_plans, rates, inventory, availability, reservations, folios, housekeeping, maintenance, reports, fiscal, tenants, guests, integrations
+from .api.routes import auth, properties, room_types, rooms, rate_plans, rates, inventory, availability, reservations, folios, housekeeping, maintenance, reports, fiscal, tenants, guests, integrations, users, outbox
+from .database import SessionLocal
+from .services.bootstrap import bootstrap
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Inicialización automática del esquema de la base de datos.
     # Fase 0: create_all (idempotente). Sin migraciones Alembic por ahora.
     Base.metadata.create_all(bind=engine)
+    # Bootstrap: tenant + usuari owner inicials (idempotent).
+    with SessionLocal() as session:
+        bootstrap(session)
     yield
 
 app = FastAPI(title='Estada PMS API', version='0.1.0', lifespan=lifespan)
@@ -47,6 +52,8 @@ app.include_router(fiscal.router, prefix='/api/v1/fiscal', tags=['Fiscal'])
 app.include_router(tenants.router, prefix='/api/v1/tenants', tags=['Tenants'])
 app.include_router(guests.router, prefix='/api/v1/guests', tags=['Guests'])
 app.include_router(integrations.router, prefix='/api/v1/integrations', tags=['Integrations'])
+app.include_router(users.router, prefix='/api/v1/users', tags=['Users'])
+app.include_router(outbox.router, prefix='/api/v1/outbox', tags=['Outbox'])
 
 if __name__ == '__main__':
     import uvicorn

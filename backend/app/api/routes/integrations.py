@@ -17,6 +17,7 @@ from ...schemas.schemas import (
     OtaWebhookCreate, OtaWebhookResponse,
     VccChargeCreate, PaymentOut,
 )
+from ...services.outbox import publish
 
 router = APIRouter()
 
@@ -164,6 +165,22 @@ def pos_room_charge(
     # 6. Recalcular folio.
     _recalc_folio(folio)
 
+    # 7. Publicar esdeveniment de domini (outbox) dins la mateixa transacció.
+    publish(
+        db,
+        aggregate="folio",
+        aggregate_id=str(folio.id),
+        type_="FolioChargePosted",
+        payload={
+            "folio_id": str(folio.id),
+            "folio_item_id": str(item.id),
+            "reservation_id": str(reservation.id),
+            "source": "comanda",
+            "external_id": payload.external_id,
+            "amount": str(payload.amount),
+        },
+    )
+
     db.commit()
     db.refresh(item)
 
@@ -265,6 +282,21 @@ def ota_webhook(
         db.add(reservation)
         db.flush()
 
+        # Publicar esdeveniment de domini (outbox) dins la mateixa transacció.
+        publish(
+            db,
+            aggregate="reservation",
+            aggregate_id=str(reservation.id),
+            type_="ReservationCreated",
+            payload={
+                "reservation_id": str(reservation.id),
+                "property_id": str(reservation.property_id),
+                "source": "ota",
+                "provider": payload.provider,
+                "external_id": payload.external_id,
+            },
+        )
+
         event.status = "processed"
         event.processed_at = datetime.now()
         db.commit()
@@ -326,6 +358,21 @@ def vcc_charge(
     db.flush()
 
     _recalc_folio(folio)
+
+    # Publicar esdeveniment de domini (outbox) dins la mateixa transacció.
+    publish(
+        db,
+        aggregate="payment",
+        aggregate_id=str(payment.id),
+        type_="PaymentCaptured",
+        payload={
+            "payment_id": str(payment.id),
+            "folio_id": str(folio.id),
+            "amount": str(amount),
+            "currency": payload.currency,
+            "provider": "vcc",
+        },
+    )
 
     db.commit()
     db.refresh(payment)

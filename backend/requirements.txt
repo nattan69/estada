@@ -8,3 +8,5 @@ python-dotenv
 psycopg2-binary
 httpx
 pytest
+pyjwt
+bcrypt
