@@ -191,12 +191,20 @@ export interface HousekeepingTask {
   completed_at?: string;
 }
 
-export interface Integration {
+export type MaintenanceStatus = 'pendent' | 'en_curs' | 'en_espera_peca' | 'resolt' | 'cancelat';
+
+export interface MaintenanceTask {
   id: string;
   property_id: string;
-  type: string;
-  provider: string;
-  credentials: any;
-  settings: any;
-  active: boolean;
+  room_id: string;
+  type: string; // tipus d'avaria: aixeta, aire, llum, etc.
+  description: string;
+  priority: number; // 1-5
+  status: MaintenanceStatus;
+  assigned_to_id?: string; // tècnic SSTT
+  created_by_id: string;
+  reported_at: string;
+  resolved_at?: string;
+  created_at: string;
+  updated_at: string;
 }
