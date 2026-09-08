@@ -1844,6 +1844,29 @@ Jornada.
 
 **Ordre d'implementació:** el portal del client és una **fase posterior** (després del core d'Estada). Es pot anar construint a sobre del CRM i el folio.
 
+### 13.9. CRM — projecte separat SENTINELA (integrat amb Estada)
+
+> **Decisió (Tomeu, 08/09/2026):** El CRM és un **projecte SEPARAT** (nom de
+> treball: **SENTINELA**), completament lligat amb Estada i viceversa.
+> Document complet: `SENTINELA_CRM.md` (carpeta Projectes).
+
+**Rol de cada sistema:**
+- **Estada (PMS):** "cor" operatiu — reserves, ocupació, housekeeping, folios, facturació, VeriFactu.
+- **SENTINELA (CRM):** "cervell" comercial i de màrqueting — contactes, pipeline, lead scoring, email marketing, campanyes, forecasting.
+
+**Mòduls del CRM:** contactes, pipeline (Kanban), tasques i alertes, canals de comunicació, dashboards/analytics, API i mòbil.
+
+**Integració bidireccional (crítica):**
+- **PMS → CRM:** historial d'estades, despesa mitjana, preferències, serveis consumits.
+- **CRM → PMS:** leads corporatius, tarifes acordades.
+- **Sincronització en temps real** (API bidireccional), **deduplicació** de perfils (email/DNI/telèfon), i **RGPD** (consentiment de màrqueting separat).
+
+**Ordre d'implementació:**
+1. Estada (core operatiu).
+2. Estada Guest (CRM bàsic).
+3. SENTINELA (CRM complet) quan el core d'Estada estigui consolidat.
+4. Integració bidireccional.
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
