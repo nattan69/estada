@@ -316,6 +316,7 @@ class Reservation(Base):
     confirmation_code = Column(String, nullable=False)
     status = Column(String, default=ReservationStatus.CONFIRMED.value)
     source = Column(String, default=ReservationSource.DIRECT_WEB.value)
+    agency_code = Column(String)  # codi del contracte d'agència (Yield & Allotment), opcional
     check_in = Column(Date, nullable=False)
     check_out = Column(Date, nullable=False)
     adults = Column(Integer, default=2)
@@ -630,4 +631,66 @@ class NightAudit(Base):
     __table_args__ = (
         Index("ix_night_audit_prop_date", "property_id", "audit_date", unique=True),
         Index("ix_night_audit_prop_status", "property_id", "status"),
+    )
+
+
+class AgencyContract(Base):
+    """Contracte de turoperació amb una agència (Yield & Allotment).
+
+    Parametritza les condicions contractuals signades amb l'agència:
+    garantia (garantit vs. lliure), dies de release, comissió i política
+    d'anul·lació. Els cupos (allotments) per tipus d'habitació i data es
+    guarden a `ContractAllotment`.
+    """
+    __tablename__ = "agency_contracts"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    agency_name = Column(String, nullable=False)
+    code = Column(String, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    guarantee_type = Column(String, default="free")  # guaranteed | free
+    release_days = Column(Integer, default=0)        # dies abans de l'arribada per alliberar el cupo
+    commission = Column(Numeric(6, 3), default=0)    # % de comissió de l'agència
+    cancellation_policy = Column(JSON)               # condicions d'anul·lació (dies, penalització)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    property = relationship("Property")
+    allotments = relationship("ContractAllotment", back_populates="contract", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_agency_contracts_prop_code", "property_id", "code", unique=True),
+        Index("ix_agency_contracts_prop_dates", "property_id", "start_date", "end_date"),
+    )
+
+
+class ContractAllotment(Base):
+    """Cupo/contingent d'un contracte per a un tipus d'habitació i una data.
+
+    Representa quantes habitacions d'un `room_type` l'agència pot vendre en
+    una data concreta, a quina tarifa pactada i amb quin descompte. El camp
+    `release_date` marca quan el cupo no venut s'allibera (torna a l'hotel).
+    """
+    __tablename__ = "contract_allotments"
+    id = uuid_pk()
+    contract_id = Column(UUID(as_uuid=True), ForeignKey("agency_contracts.id", ondelete="CASCADE"), nullable=False)
+    room_type_id = Column(UUID(as_uuid=True), ForeignKey("room_types.id", ondelete="CASCADE"), nullable=False)
+    date = Column(Date, nullable=False)
+    allotment = Column(Integer, nullable=False)
+    sold = Column(Integer, default=0)
+    release_date = Column(Date)                       # data d'alliberament del cupo no venut
+    contracted_rate = Column(Numeric(12, 2))         # tarifa pactada amb l'agència
+    discount_pct = Column(Numeric(6, 3), default=0)   # descompte sobre la tarifa
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    contract = relationship("AgencyContract", back_populates="allotments")
+    room_type = relationship("RoomType")
+
+    __table_args__ = (
+        Index("ix_contract_allot_contract_date", "contract_id", "date"),
+        Index("ix_contract_allot_rt_date", "room_type_id", "date"),
+        Index("ix_contract_allot_contract_rt_date", "contract_id", "room_type_id", "date", unique=True),
     )

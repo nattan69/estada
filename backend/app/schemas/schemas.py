@@ -249,6 +249,7 @@ class ReservationBase(BaseModel):
     confirmation_code: str
     status: str = "confirmed"
     source: str = "direct_web"
+    agency_code: Optional[str] = None
     check_in: date
     check_out: date
     adults: int = 2
@@ -268,6 +269,7 @@ class ReservationUpdate(BaseModel):
     status: Optional[str] = None
     check_in: Optional[date] = None
     check_out: Optional[date] = None
+    agency_code: Optional[str] = None
     adults: Optional[int] = None
     children: Optional[int] = None
     total_amount: Optional[Decimal] = None
@@ -657,3 +659,82 @@ class NightAuditOut(BaseModel):
     created_by_id: Optional[UUID] = None
     summary: Optional[dict] = None
     error: Optional[str] = None
+
+
+# ============================================================
+# AGENCY CONTRACTS (Yield & Allotment)
+# ============================================================
+class ContractAllotmentCreate(BaseModel):
+    """Cupo d'un contracte per a un tipus d'habitació i una data."""
+    room_type_id: UUID
+    date: date
+    allotment: int = Field(ge=0)
+    release_date: Optional[date] = None
+    contracted_rate: Optional[Decimal] = None
+    discount_pct: Decimal = Decimal("0")
+
+
+class ContractAllotmentOut(ContractAllotmentCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    contract_id: UUID
+    sold: int = 0
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class AgencyContractCreate(BaseModel):
+    """Parametrització d'un contracte de turoperació."""
+    property_id: UUID
+    agency_name: str
+    code: str
+    start_date: date
+    end_date: date
+    guarantee_type: str = "free"          # guaranteed | free
+    release_days: int = Field(0, ge=0)
+    commission: Decimal = Decimal("0")
+    cancellation_policy: Optional[dict] = None
+    active: bool = True
+    allotments: List[ContractAllotmentCreate] = []
+
+
+class AgencyContractUpdate(BaseModel):
+    agency_name: Optional[str] = None
+    code: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    guarantee_type: Optional[str] = None
+    release_days: Optional[int] = None
+    commission: Optional[Decimal] = None
+    cancellation_policy: Optional[dict] = None
+    active: Optional[bool] = None
+
+
+class AgencyContractOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    property_id: UUID
+    agency_name: str
+    code: str
+    start_date: date
+    end_date: date
+    guarantee_type: str
+    release_days: int
+    commission: Decimal
+    cancellation_policy: Optional[dict] = None
+    active: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    allotments: List[ContractAllotmentOut] = []
+
+
+class ContractAuditResult(BaseModel):
+    """Resultat de l'auditoria d'una reserva contra el contracte."""
+    reservation_id: UUID
+    contract_id: Optional[UUID] = None
+    agency_name: Optional[str] = None
+    status: str          # ok | on_request | rejected | price_discrepancy | released
+    reason: Optional[str] = None
+    contracted_rate: Optional[Decimal] = None
+    applied_rate: Optional[Decimal] = None
+    release_date: Optional[date] = None
