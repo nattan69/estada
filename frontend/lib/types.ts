@@ -230,10 +230,36 @@ export interface FiscalRecord {
   issued_at: string;
 }
 
-export interface ChainVerifyResponse {
-  valid: boolean;
-  total_records?: number;
-  broken_at?: string;
-  reason?: string;
+export interface NightAuditSummary {
+  audit_date: string;
+  rooms_total: number;
+  rooms_occupied: number;
+  occupancy_pct: number;
+  arrivals: number;
+  departures: number;
+  no_shows: number;
+  nights_posted: number;
+  room_revenue: number;
+  other_revenue: number;
+  total_revenue: number;
+  folios_closed: number;
+  folios_open: number;
+  // Camps ampliats (na Maria, 08/09/2026)
+  payments_by_method?: Record<string, string>; // { "cash": "60.00", "card": "100.00", ... }
+  payments_total?: string; // total de pagaments capturats
+  extras_posted?: number; // nombre d'extres facturats a les sortides
+  extras_revenue?: string; // import total dels extres
+}
+
+export interface NightAudit {
+  id: string;
+  property_id: string;
+  audit_date: string;
+  status: 'running' | 'completed' | 'failed';
+  started_at: string;
+  completed_at?: string;
+  created_by_id: string;
+  summary: NightAuditSummary;
+  error?: string;
 }
 

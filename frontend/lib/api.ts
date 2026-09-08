@@ -9,7 +9,9 @@ import {
   Guest,
   FiscalRecord,
   ChainVerifyResponse,
-  User
+  User,
+  NightAudit,
+  NightAuditSummary
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -91,7 +93,56 @@ const MOCKS = {
       valid: true,
       total_records: 1,
     } as ChainVerifyResponse,
-  }
+  },
+  nightAudit: [
+    {
+      id: 'audit-1',
+      property_id: 'prop-1',
+      audit_date: '2026-09-07',
+      status: 'completed',
+      started_at: '2026-09-07T23:50:00Z',
+      completed_at: '2026-09-08T00:05:00Z',
+      created_by_id: 'usr-1',
+      summary: {
+        audit_date: '2026-09-07',
+        rooms_total: 20,
+        rooms_occupied: 15,
+        occupancy_pct: 75,
+        arrivals: 5,
+        departures: 4,
+        no_shows: 1,
+        nights_posted: 15,
+        room_revenue: 1200,
+        other_revenue: 150,
+        total_revenue: 1350,
+        folios_closed: 4,
+        folios_open: 11,
+      },
+    },
+    {
+      id: 'audit-2',
+      property_id: 'prop-1',
+      audit_date: '2026-09-06',
+      status: 'failed',
+      started_at: '2026-09-06T23:55:00Z',
+      error: 'Error posting room charges for room 104',
+      summary: {
+        audit_date: '2026-09-06',
+        rooms_total: 20,
+        rooms_occupied: 12,
+        occupancy_pct: 60,
+        arrivals: 3,
+        departures: 6,
+        no_shows: 2,
+        nights_posted: 12,
+        room_revenue: 900,
+        other_revenue: 80,
+        total_revenue: 980,
+        folios_closed: 6,
+        folios_open: 6,
+      },
+    },
+  ] as NightAudit[],
 };
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -110,6 +161,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
     if (endpoint.startsWith('/fiscal/chain/verify')) {
         return MOCKS.fiscal.verify as any;
+    }
+    if (endpoint.startsWith('/night-audit')) {
+        if (endpoint.includes('/run')) return MOCKS.nightAudit[0] as any;
+        if (endpoint.includes('/')) {
+            const id = endpoint.split('/').pop();
+            return MOCKS.nightAudit.find(a => a.id === id) || MOCKS.nightAudit[0] as any;
+        }
+        return MOCKS.nightAudit as any;
     }
 
     const mockKey = endpoint.split('/')[1] as keyof typeof MOCKS;
@@ -276,5 +335,16 @@ export const api = {
       request<FiscalRecord>(`/api/v1/fiscal/records/${id}`),
     verifyChain: (propertyId: string) => 
       request<ChainVerifyResponse>(`/api/v1/fiscal/chain/verify?${new URLSearchParams({ propertyId })}`),
+  },
+  nightAudit: {
+    run: (data: { property_id: string, audit_date?: string }) => 
+      request<NightAudit>(`/api/v1/night-audit/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }),
+    list: (params: { propertyId?: string, audit_date?: string }) => 
+      request<NightAudit[]>(`/api/v1/night-audit?${new URLSearchParams(params)}`),
+    get: (id: string) => request<NightAudit>(`/api/v1/night-audit/${id}`),
   }
 };
