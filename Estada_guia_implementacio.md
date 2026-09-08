@@ -1867,6 +1867,32 @@ Jornada.
 3. SENTINELA (CRM complet) quan el core d'Estada estigui consolidat.
 4. Integració bidireccional.
 
+### 13.10. Manteniment dins Housekeeping (parts a SSTT)
+
+> **Decisió (Tomeu, 08/09/2026):** Dins de Housekeeping, incloure un apartat de
+> **manteniment** que permeti **passar parts a SSTT (Serveis Tècnics)** i
+> **seguir l'estat de la reparació**.
+
+**Funcionalitats:**
+- **Partes a SSTT (Serveis Tècnics):** la cambrera de pisos (o el personal) pot
+  registrar una avaria (ex. aixeta que goteja, aire condicionat que no funciona)
+  i passar el part al servei tècnic.
+- **Seguiment de l'estat de la reparació:** visualitzar en temps real l'estat de
+  cada reparació (pendent, en curs, en espera de peça, resolt).
+- **Bloqueig automàtic de l'habitació:** si l'avaria ho requereix, l'habitació
+  es marca com a *Out of Order* / *Fora de servei*.
+- **Notificació al servei tècnic:** avís automàtic quan es registra una avaria.
+
+**Model (proposta):**
+- Entitat `MaintenanceTask` (tipus d'avaria, descripció, habitació, prioritat,
+  estat, tècnic assignat, dates).
+- Estats: `pendent`, `en_curs`, `en_espera_peca`, `resolt`, `cancelat`.
+- Relació amb `Room` (l'habitació afectada) i amb `User` (el tècnic assignat).
+
+**Integració amb l'ecosistema:**
+- Dins del mòdul de **Housekeeping** d'Estada (camp 2).
+- Si hi ha una app de tècnics (SSTT), es pot integrar via API.
+
 ---
 
 ## 14. Criteris d'acceptacio del MVP
