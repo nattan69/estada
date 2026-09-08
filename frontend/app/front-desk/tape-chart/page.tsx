@@ -1,17 +1,18 @@
 import React from 'react';
 import { TapeChart } from '@/components/tape-chart/TapeChart';
 import { translations } from '@/lib/i18n';
+import type { Reservation, Room } from '@/lib/types';
 
 export default function TapeChartPage() {
   const t = translations.ca;
 
   // Dades mock per a la demo (el backend encara no està connectat aquí)
-  const mockRooms = [
-    { id: 'rm-1', number: '101', status: 'clean' },
-    { id: 'rm-2', number: '102', status: 'dirty' },
-    { id: 'rm-3', number: '201', status: 'clean' },
+  const mockRooms: Room[] = [
+    { id: 'rm-1', property_id: 'p1', room_type_id: 'rt1', number: '101', status: 'clean', active: true },
+    { id: 'rm-2', property_id: 'p1', room_type_id: 'rt1', number: '102', status: 'dirty', active: true },
+    { id: 'rm-3', property_id: 'p1', room_type_id: 'rt1', number: '201', status: 'clean', active: true },
   ];
-  const mockReservations = [
+  const mockReservations: Reservation[] = [
     {
       id: 'res-1', property_id: 'p1', guest_id: 'g1', room_type_id: 'rt1',
       assigned_room_id: 'rm-1', confirmation_code: 'RES-001', status: 'confirmed',
