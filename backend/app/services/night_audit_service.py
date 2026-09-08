@@ -11,8 +11,13 @@ el nucli financer, de forma idempotent i transaccional:
 3. **No-shows**: reserves `confirmed` amb `check_in == audit_date` que no han
    fet check-in es marquen `no_show`.
 4. **Tancar folios** de reserves `checked_out` amb saldo zero.
-5. **Resum** (ocupació, revenue, nits postades, folios tancats) que es guarda
-   al registre `NightAudit`.
+5. **Tancament de caixa**: desglossament dels pagaments capturats per mètode
+   (efectiu, targetes, crèdits a l'habitació, VCC, etc.).
+6. **Facturació d'extres de les sortides**: càrrecs no-`room_night` (POS,
+   producte, servei, impost, no_show_fee) postats als folios de les reserves
+   que surten avui.
+7. **Resum** (ocupació, revenue, nits postades, folios tancats, pagaments per
+   mètode, extres) que es guarda al registre `NightAudit`.
 
 Idempotència: cada execució queda registrada a `night_audits` amb un índex
 únic `(property_id, audit_date)`. Si ja s'ha tancat aquesta data, es retorna
@@ -33,6 +38,8 @@ from ..models.models import (
     FolioItem,
     FolioItemType,
     NightAudit,
+    Payment,
+    PaymentStatus,
     Reservation,
     ReservationNight,
     ReservationStatus,
@@ -125,6 +132,12 @@ def run_night_audit(
         "total_revenue": "0",
         "folios_closed": 0,
         "folios_open": 0,
+        # Tancament de caixa: desglossament per mètode de pagament.
+        "payments_by_method": {},
+        "payments_total": "0",
+        # Facturació d'extres de les sortides (càrrecs no-room_night del dia).
+        "extras_posted": 0,
+        "extras_revenue": "0",
     }
 
     try:
@@ -236,13 +249,58 @@ def run_night_audit(
         summary["folios_closed"] = folios_closed
         summary["folios_open"] = folios_open
 
-        # --- 5. Revenue total (nits + altres càrrecs del dia) ---
-        # Altres càrrecs: FolioItems no-room_night postats avui.
-        other_revenue = Decimal("0")
-        # (Simplificat: el revenue de nits ja s'ha comptat; aquí podríem sumar
-        #  els càrrecs POS/producte del dia. Ho deixem a 0 per ara.)
-        summary["other_revenue"] = str(other_revenue)
-        summary["total_revenue"] = str(room_revenue + other_revenue)
+        # --- 5. Tancament de caixa: desglossament per mètode de pagament ---
+        # Sumem els pagaments capturats avui (o pendents d'ahir) agrupats per
+        # mètode: efectiu (cash), targetes (card), crèdits a l'habitació
+        # (room_charge), VCC d'agència, etc. El camp `method` és lliure, així
+        # que agrupem pel valor exacte i normalitzem els buits a "other".
+        payments = (
+            db.query(Payment)
+            .join(Folio, Payment.folio_id == Folio.id)
+            .filter(
+                Folio.property_id == property_id,
+                Payment.status == PaymentStatus.CAPTURED.value,
+            )
+            .all()
+        )
+        payments_by_method: dict[str, str] = {}
+        payments_total = Decimal("0")
+        for p in payments:
+            method = (p.method or "other").strip().lower() or "other"
+            amount = Decimal(str(p.amount or 0))
+            payments_by_method[method] = str(
+                Decimal(payments_by_method.get(method, "0")) + amount
+            )
+            payments_total += amount
+        summary["payments_by_method"] = payments_by_method
+        summary["payments_total"] = str(payments_total)
+
+        # --- 6. Facturació d'extres de les sortides ---
+        # Càrrecs no-room_night (POS, producte, servei, impost, no_show_fee)
+        # postats avui als folios de les reserves que surten avui. Aquests són
+        # els extres que s'han de facturar al check-out.
+        extras_posted = 0
+        extras_revenue = Decimal("0")
+        departing_ids = [r.id for r in departures]
+        if departing_ids:
+            extra_items = (
+                db.query(FolioItem)
+                .join(Folio, FolioItem.folio_id == Folio.id)
+                .filter(
+                    Folio.reservation_id.in_(departing_ids),
+                    FolioItem.type != FolioItemType.ROOM_NIGHT.value,
+                )
+                .all()
+            )
+            for item in extra_items:
+                extras_posted += 1
+                extras_revenue += Decimal(str(item.amount or 0))
+        summary["extras_posted"] = extras_posted
+        summary["extras_revenue"] = str(extras_revenue)
+
+        # --- 7. Revenue total (nits + extres) ---
+        summary["other_revenue"] = str(extras_revenue)
+        summary["total_revenue"] = str(room_revenue + extras_revenue)
 
         audit.summary = summary
         audit.status = "completed"

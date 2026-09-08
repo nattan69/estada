@@ -640,6 +640,10 @@ class NightAuditSummary(BaseModel):
     total_revenue: Decimal = Decimal("0")
     folios_closed: int = 0
     folios_open: int = 0
+    payments_by_method: dict = {}
+    payments_total: Decimal = Decimal("0")
+    extras_posted: int = 0
+    extras_revenue: Decimal = Decimal("0")
 
 
 class NightAuditOut(BaseModel):
