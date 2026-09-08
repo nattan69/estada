@@ -230,6 +230,13 @@ export interface FiscalRecord {
   issued_at: string;
 }
 
+export interface ChainVerifyResponse {
+  valid: boolean;
+  total_records?: number;
+  broken_at?: string;
+  reason?: string;
+}
+
 export interface NightAuditSummary {
   audit_date: string;
   rooms_total: number;
