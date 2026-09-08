@@ -8,7 +8,7 @@ export default function RoomsSettingsPage() {
     { id: 'rm-3', number: '201', type: 'Suite', status: 'clean' },
   ];
 
-  const columns = [
+  const columns: { header: string; accessor: keyof typeof mockRooms[number] | ((r: any) => React.ReactNode) }[] = [
     { header: 'Room #', accessor: 'number' },
     { header: 'Type', accessor: 'type' },
     { header: 'Status', accessor: 'status' },

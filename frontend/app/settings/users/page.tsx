@@ -7,7 +7,7 @@ export default function UsersSettingsPage() {
     { id: 'u-2', name: 'Receptionist 1', email: 'rec1@hotel.com', role: 'reception' },
   ];
 
-  const columns = [
+  const columns: { header: string; accessor: keyof typeof mockUsers[number] | ((u: any) => React.ReactNode) }[] = [
     { header: 'Name', accessor: 'name' },
     { header: 'Email', accessor: 'email' },
     { header: 'Role', accessor: 'role' },

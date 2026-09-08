@@ -23,7 +23,7 @@ export default function NewReservationPage() {
   const [quote, setQuote] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -39,8 +39,8 @@ export default function NewReservationPage() {
         property_id: formData.property_id,
         check_in: formData.check_in,
         check_out: formData.check_out,
-        adults: parseInt(formData.adults),
-        children: parseInt(formData.children),
+        adults: formData.adults,
+        children: formData.children,
         rate_plan_id: formData.rate_plan_id || undefined,
       });
       if (results && results.length > 0) {
@@ -68,8 +68,8 @@ export default function NewReservationPage() {
         rate_plan_id: formData.rate_plan_id,
         check_in: formData.check_in,
         check_out: formData.check_out,
-        adults: parseInt(formData.adults),
-        children: parseInt(formData.children),
+        adults: formData.adults,
+        children: formData.children,
         source: formData.source,
         notes: formData.notes,
       });

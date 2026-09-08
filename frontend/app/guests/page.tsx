@@ -7,7 +7,7 @@ export default function GuestsPage() {
     { id: 'gst-2', name: 'Jane Smith', email: 'jane@example.com', phone: '+34 600 111 111' },
   ];
 
-  const columns = [
+  const columns: { header: string; accessor: keyof typeof mockGuests[number] | ((g: any) => React.ReactNode) }[] = [
     { header: 'Guest ID', accessor: 'id' },
     { header: 'Name', accessor: 'name' },
     { header: 'Email', accessor: 'email' },

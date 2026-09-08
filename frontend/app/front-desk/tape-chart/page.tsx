@@ -5,6 +5,21 @@ import { translations } from '@/lib/i18n';
 export default function TapeChartPage() {
   const t = translations.ca;
 
+  // Dades mock per a la demo (el backend encara no està connectat aquí)
+  const mockRooms = [
+    { id: 'rm-1', number: '101', status: 'clean' },
+    { id: 'rm-2', number: '102', status: 'dirty' },
+    { id: 'rm-3', number: '201', status: 'clean' },
+  ];
+  const mockReservations = [
+    {
+      id: 'res-1', property_id: 'p1', guest_id: 'g1', room_type_id: 'rt1',
+      assigned_room_id: 'rm-1', confirmation_code: 'RES-001', status: 'confirmed',
+      source: 'direct_web', check_in: '2026-09-10', check_out: '2026-09-15',
+      adults: 2, children: 0, total_amount: 500, currency: 'EUR',
+    },
+  ];
+
   return (
     <div className="p-6 h-screen flex flex-col">
       <div className="flex justify-between items-center mb-6">
@@ -15,7 +30,7 @@ export default function TapeChartPage() {
         </div>
       </div>
       <div className="flex-1 overflow-auto bg-slate-900 rounded-lg border border-slate-700">
-        <TapeChart />
+        <TapeChart reservations={mockReservations} rooms={mockRooms} />
       </div>
     </div>
   );
