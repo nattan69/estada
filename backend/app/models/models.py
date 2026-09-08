@@ -403,12 +403,16 @@ class FolioItem(Base):
     unit_price = Column(Numeric(12, 2), nullable=False)
     tax_rate = Column(Numeric(6, 3), default=0)
     amount = Column(Numeric(12, 2), nullable=False)
+    external_id = Column(String)  # idempotencia (cargos POS de Comanda)
     posted_at = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     folio = relationship("Folio", back_populates="items")
 
-    __table_args__ = (Index("ix_items_folio", "folio_id"),)
+    __table_args__ = (
+        Index("ix_items_folio", "folio_id"),
+        Index("ix_items_external", "external_id", unique=True),
+    )
 
 
 class Payment(Base):

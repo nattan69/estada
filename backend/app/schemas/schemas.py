@@ -323,6 +323,7 @@ class FolioItemOut(BaseModel):
     unit_price: Decimal
     tax_rate: Decimal
     amount: Decimal
+    external_id: Optional[str] = None
     posted_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
@@ -552,4 +553,61 @@ class FiscalRecordOut(BaseModel):
     previous_hash: str
     payload_hash: str
     hash: str
-    issued_at: Optional[datetime] = None
+
+
+# ============================================================
+# INTEGRACIONES (Fase 3)
+# ============================================================
+
+class PosChargeItem(BaseModel):
+    """Línea de un cargo de Comanda (TPV)."""
+    name: str
+    qty: int = 1
+    price: Decimal
+    tax_rate: Decimal = Decimal("0.00")
+
+
+class PosRoomChargeCreate(BaseModel):
+    """Cargo de habitación enviado por Comanda (TPV)."""
+    external_id: str
+    guest_name: Optional[str] = None
+    room_number: str
+    amount: Decimal
+    items: List[PosChargeItem] = []
+    staff_id: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
+class PosRoomChargeResponse(BaseModel):
+    success: bool
+    folio_id: Optional[UUID] = None
+    folio_item_id: Optional[UUID] = None
+    reservation_id: Optional[UUID] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+
+class OtaWebhookCreate(BaseModel):
+    """Evento de reserva enviado por un OTA / Channel Manager."""
+    provider: str
+    external_id: str
+    type: str = "reservation_created"
+    payload: dict = {}
+
+
+class OtaWebhookResponse(BaseModel):
+    success: bool
+    reservation_id: Optional[UUID] = None
+    webhook_event_id: Optional[UUID] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+
+class VccChargeCreate(BaseModel):
+    """Cobro de una tarjeta virtual (VCC) de agencia."""
+    folio_id: UUID
+    amount: Decimal
+    currency: str = "EUR"
+    external_ref: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    activation_date: Optional[date] = None
