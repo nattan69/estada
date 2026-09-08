@@ -8,12 +8,13 @@ import {
   Room, 
   Guest,
   FiscalRecord,
-  ChainVerifyResponse
+  ChainVerifyResponse,
+  User
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
-// Mock Data for emergency fallback
+// Mock Data for emergency fallback with explicit typing
 const MOCKS = {
   reservations: [
     {
@@ -31,14 +32,38 @@ const MOCKS = {
       total_amount: 500,
       currency: 'EUR',
     }
-  ],
+  ] as Reservation[],
   rooms: [
     { id: 'rm-1', property_id: 'prop-1', room_type_id: 'rt-1', number: '101', status: 'clean', active: true },
     { id: 'rm-2', property_id: 'prop-1', room_type_id: 'rt-1', number: '102', status: 'dirty', active: true },
-  ],
+  ] as Room[],
+  guests: [
+    {
+      id: 'gst-1',
+      tenant_id: 'ten-1',
+      first_name: 'Joan',
+      last_name: 'Planells',
+      email: 'joan@example.com',
+      phone: '+34 600 000 000',
+      document_type: 'DNI',
+      document_number: '12345678X',
+      marketing_opt_in: true,
+      notes: 'Preferència planta baixa',
+    }
+  ] as Guest[],
+  users: [
+    {
+      id: 'usr-1',
+      tenant_id: 'ten-1',
+      email: 'admin@estada.com',
+      name: 'Administrador',
+      role: 'owner',
+      active: true,
+    }
+  ] as User[],
   folios: [
     { id: 'fol-1', property_id: 'prop-1', reservation_id: 'res-1', guest_id: 'gst-1', kind: 'reservation', status: 'open', currency: 'EUR', total_amount: 500, paid_amount: 0, balance: 500 },
-  ],
+  ] as Folio[],
   fiscal: {
     records: [
       {
@@ -53,7 +78,7 @@ const MOCKS = {
         irpf: 0,
         vat_breakdown: [
           { rate: 10, base: 450, tax: 45 },
-          { rate: 10, base: 450, tax: 45 }, // simplified example
+          { rate: 10, base: 450, tax: 45 },
         ],
         payload: { customer: 'Guest 1', items: ['Stay'] },
         previous_hash: '0000000000000000',
@@ -77,7 +102,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   } catch (e) {
     console.warn(`Using mock for ${endpoint} due to error:`, e);
     
-    // Enhanced mock lookup for nested structures like api.fiscal.listRecords
     if (endpoint.startsWith('/fiscal/records')) {
         if (endpoint.includes('/records/')) {
             return MOCKS.fiscal.records[0] as any;
@@ -127,6 +151,45 @@ export const api = {
     list: (params?: { propertyId?: string }) => 
       request<Room[]>(`/rooms${params?.propertyId ? `?${new URLSearchParams({ propertyId: params.propertyId })}` : ''}`),
     get: (id: string) => request<Room>(`/rooms/${id}`),
+    create: (data: any) => request<Room>(`/rooms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<Room>(`/rooms/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    updateStatus: (id: string, data: any) => request<Room>(`/rooms/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+  },
+  guests: {
+    list: (params?: { email?: string }) => 
+      request<Guest[]>(`/guests${params?.email ? `?${new URLSearchParams({ email: params.email })}` : ''}`),
+    get: (id: string) => request<Guest>(`/guests/${id}`),
+    create: (data: any) => request<Guest>(`/guests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<Guest>(`/guests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+  },
+  users: {
+    list: () => request<User[]>(`/users`),
+    get: (id: string) => request<User>(`/users/${id}`),
+    create: (data: any) => request<User>(`/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
   },
   reservations: {
     list: (params: { propertyId?: string, date?: string, status?: string }) => 
