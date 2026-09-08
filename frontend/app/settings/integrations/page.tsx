@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { translations } from '@/lib/i18n';
+import { api } from '@/lib/api';
 
 // Tipus per a les integracions
 interface Integration {
@@ -14,8 +15,8 @@ interface Integration {
 }
 
 export default function IntegrationsSettingsPage() {
-  // Gestió de l'idioma localment (com sol·licitat, ja que no hi ha hook useTranslation)
   const [lang, setLang] = useState<'ca' | 'es' | 'en'>('ca');
+  const [loading, setLoading] = useState<string | null>(null);
 
   const integrations: Integration[] = [
     {
@@ -96,6 +97,47 @@ export default function IntegrationsSettingsPage() {
     en: { connected: 'Connected', pending: 'Pending', error: 'Error' },
   };
 
+  const handleTestIntegration = async (id: string) => {
+    setLoading(id);
+    try {
+      if (id === 'pos-room-charges') {
+        await api.integrations.posRoomCharge({ 
+          room_number: '101', 
+          amount: 15.50, 
+          external_id: `test-${Date.now()}`,
+          items: [{ name: 'Cafè', qty: 1, tax_rate: 0.10 }]
+        });
+      } else if (id === 'ota-webhook') {
+        await api.integrations.otaWebhook({
+          provider: 'booking',
+          external_id: `ota-${Date.now()}`,
+          type: 'reservation_created',
+          payload: {
+            property_id: 'prop-1',
+            guest_id: 'gst-1',
+            room_type_id: 'rt-1',
+            check_in: '2026-09-15',
+            check_out: '2026-09-20',
+            total_amount: 100
+          }
+        });
+      } else if (id === 'vcc-payment') {
+        await api.integrations.vccCharge({
+          folio_id: 'fol-1',
+          amount: 100.00,
+          currency: 'EUR',
+          external_ref: 'VCC-TEST-123'
+        });
+      }
+      alert(lang === 'ca' ? 'Prova exitosa!' : lang === 'es' ? '¡Prueba exitosa!' : 'Test successful!');
+    } catch (e) {
+      console.error(e);
+      alert(lang === 'ca' ? 'Error en la prova' : lang === 'es' ? 'Error en la prueba' : 'Error during test');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-8 bg-[#1a1a2e] min-h-screen text-white">
       <div className="flex justify-between items-center">
@@ -103,7 +145,6 @@ export default function IntegrationsSettingsPage() {
           {translations[lang].settings} <span className="text-[#e2b04a]">— Integracions</span>
         </h1>
         
-        {/* Selector d'idioma simplificat */}
         <div className="flex gap-2">
           {(['ca', 'es', 'en'] as const).map((l) => (
             <button
@@ -142,8 +183,12 @@ export default function IntegrationsSettingsPage() {
               {int.description[lang]}
             </p>
 
-            <button className="w-full py-2 px-4 bg-transparent border border-[#e2b04a] text-[#e2b04a] rounded-lg text-sm font-bold hover:bg-[#e2b04a] hover:text-[#1a1a2e] transition-all">
-              {lang === 'ca' ? 'Configurar' : lang === 'es' ? 'Configurar' : 'Configure'}
+            <button 
+              onClick={() => handleTestIntegration(int.id)}
+              disabled={loading === int.id}
+              className="w-full py-2 px-4 bg-transparent border border-[#e2b04a] text-[#e2b04a] rounded-lg text-sm font-bold hover:bg-[#e2b04a] hover:text-[#1a1a2e] transition-all disabled:opacity-50"
+            >
+              {loading === int.id ? (lang === 'ca' ? 'Provant...' : lang === 'es' ? 'Probando...' : 'Testing...') : (lang === 'ca' ? 'Provar Connexió' : lang === 'es' ? 'Probar Conexión' : 'Test Connection')}
             </button>
           </div>
         ))}

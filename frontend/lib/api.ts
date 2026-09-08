@@ -55,19 +55,41 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  integrations: {
+    posRoomCharge: (data: any) => request<any>(`/integrations/pos/room-charges`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': 'POS_API_KEY'
+      },
+      body: JSON.stringify(data)
+    }),
+    otaWebhook: (data: any) => request<any>(`/integrations/ota/webhook`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': 'OTA_API_KEY'
+      },
+      body: JSON.stringify(data)
+    }),
+    vccCharge: (data: any) => request<any>(`/integrations/payments/vcc`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': 'POS_API_KEY'
+      },
+      body: JSON.stringify(data)
+    }),
+  },
   reservations: {
-    // GET /reservations?propertyId=...&date=...&status=...
     list: (params: { propertyId?: string, date?: string, status?: string }) => 
       request<Reservation[]>(`/reservations?${new URLSearchParams(params)}`),
-    
     get: (id: string) => request<Reservation>(`/reservations/${id}`),
-    
     create: (data: any) => request<Reservation>(`/reservations`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    
     cancel: (id: string) => request<void>(`/reservations/${id}/cancel`, { method: 'POST' }),
     checkIn: (id: string) => request<void>(`/reservations/${id}/check-in`, { method: 'POST' }),
     checkOut: (id: string) => request<void>(`/reservations/${id}/check-out`, { method: 'POST' }),
@@ -83,7 +105,6 @@ export const api = {
     }),
   },
   availability: {
-    // GET /availability?propertyId=...&from=...&to=...&adults=...&children=...&ratePlanId=...
     search: (params: { propertyId: string, from: string, to: string, adults: number, children?: number, ratePlanId?: string }) => 
       request<any[]>(`/availability?${new URLSearchParams({
         propertyId: params.propertyId,
@@ -93,8 +114,6 @@ export const api = {
         ...(params.children !== undefined ? { children: String(params.children) } : {}),
         ...(params.ratePlanId ? { ratePlanId: params.ratePlanId } : {}),
       })}`),
-    
-    // POST /reservations/quote
     quote: (data: { property_id: string, check_in: string, check_out: string, adults: number, children: number, rate_plan_id?: string }) => 
       request<any[]>(`/reservations/quote`, { 
         method: 'POST', 
