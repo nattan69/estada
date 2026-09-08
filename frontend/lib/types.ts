@@ -194,6 +194,20 @@ export interface HousekeepingTask {
 
 export type MaintenanceStatus = 'pendent' | 'en_curs' | 'en_espera_peca' | 'resolt' | 'cancelat';
 
+export interface MaintenanceTask {
+  id: string;
+  property_id: string;
+  room_id: string;
+  type: string;
+  description: string;
+  priority: number;
+  status: MaintenanceStatus;
+  created_by_id?: string;
+  reported_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FiscalRecord {
   id: string;
   property_id: string;
