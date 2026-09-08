@@ -1844,6 +1844,38 @@ Jornada.
 
 **Ordre d'implementació:** el portal del client és una **fase posterior** (després del core d'Estada). Es pot anar construint a sobre del CRM i el folio.
 
+### 13.8.1. Portal del client — requisits legals (RGPD, LSSI, eIDAS)
+
+> **Nota legal (Tomeu, 08/09/2026):** El Portal del Client s'ha de dissenyar
+> complint estrictament el **RGPD**, la **LSSI** i el reglament **eIDAS** de
+> signatura electrònica. Com un Portal de l'Empleat amb el RRHH, però orientat
+> al client (Guest App / Portal Web de l'Hòspit).
+
+**Funcionalitat 1 — Obertura de porta amb el mòbil (Clau Digital / Bluetooth / Web App):**
+- [ ] **Legal i segur**, sempre que:
+  - La clau digital **només s'activa després de verificar la identitat** del client (check-in complet, DNI/passaport validat i fitxa d'entrada signada).
+  - Les dades de desencriptació enviades al telèfon compleixin **xifrat d'extrem a extrem (End-to-End)**.
+- [ ] **Alternativa tradicional**: oferir sempre una clau/targeta física per a qui no faci servir el mòbil (no obligatorietat).
+
+**Funcionalitat 2 — Imputació i verificació de càrrecs a l'habitació (Charge to Room):**
+- [ ] **Legal amb transparència** en les condicions de pagament:
+  - **Consentiment i preautorització**: al check-in (o a l'app), el client accepta expressament carregar despeses i preautoritza una targeta com a garantia.
+  - **Accés a les factures**: el portal permet consultar el desglossament de despeses en temps real (dret a la informació del consumidor abans del tancament).
+
+**Funcionalitat 3 — Enviament de promocions, upselling i màrqueting (el punt més delicat per RGPD):**
+- [ ] **Serveis durant l'estada (cross-selling operatiu)**: oferir serveis de l'hotel directament relacionats amb l'estada (reservar taula al restaurant, llogar pista, servei de spa) → es pot acollir a l'**interès legítim** o a l'**execució del contracte d'allotjament**.
+- [ ] **Promocions comercials/futures**: màrqueting no vinculat a l'estada actual o campanyes després del check-out → cal **consentiment exprés (opt-in)**, no marcat per defecte, durant el registre o el primer accés al portal.
+
+**Funcionalitat 4 — Registre de viatgers i signatura digital:**
+- [ ] **Obligatori per llei** (filiació policial / seguretat ciutadana).
+  - El portal pot fer el **pre-check-in**; les dades es recullen i s'envien a les autoritats segons la normativa.
+  - La **signatura digital en pantalla té plena validesa jurídica** si la plataforma compleix el reglament **eIDAS**.
+
+**Bones pràctiques d'implementació:**
+- [ ] **Política de privadesa clara**: al primer accés, avís de privadesa resumit + enllaç a la política completa (ús de les dades).
+- [ ] **No obligatorietat**: alternativa tradicional (clau/targeta física) per a qui no pugui/no vulgui el mòbil.
+- [ ] **Accés mitjançant Web App (PWA)**: en lloc d'una app per instal·lar, un enllaç per SMS/WhatsApp o QR + número de reserva. El client no instal·la res → facilita molt el compliment normatiu.
+
 ### 13.9. CRM — projecte separat SENTINELA (integrat amb Estada)
 
 > **Decisió (Tomeu, 08/09/2026):** El CRM és un **projecte SEPARAT** (nom de
