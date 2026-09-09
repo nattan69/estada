@@ -203,7 +203,7 @@ const MOCKS = {
       updated_at: new Date().toISOString(),
     }
   ] as MaintenanceTask[],
-},
+};
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
@@ -298,7 +298,7 @@ export const api = {
   },
   rooms: {
     list: (params?: { propertyId?: string }) => 
-      request<Room[]>(`/rooms${params?.propertyId ? `?${new URLSearchParams({ propertyId: params.propertyId })}` : ''}`),
+      request<Room[]>(`/rooms${params?.propertyId ? '?' + new URLSearchParams({ propertyId: params.propertyId }).toString() : ''}`),
     get: (id: string) => request<Room>(`/rooms/${id}`),
     create: (data: any) => request<Room>(`/rooms`, {
       method: 'POST',
@@ -318,7 +318,7 @@ export const api = {
   },
   guests: {
     list: (params?: { email?: string }) => 
-      request<Guest[]>(`/guests${params?.email ? `?${new URLSearchParams({ email: params.email })}` : ''}`),
+      request<Guest[]>(`/guests${params?.email ? '?' + new URLSearchParams({ email: params.email }).toString() : ''}`),
     get: (id: string) => request<Guest>(`/guests/${id}`),
     create: (data: any) => request<Guest>(`/guests`, {
       method: 'POST',
