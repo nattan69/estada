@@ -224,7 +224,6 @@ export interface FiscalRecord {
     tax: number;
   }>;
   payload: any;
-  previous_hash: string;
   payload_hash: string;
   hash: string;
   issued_at: string;
@@ -235,6 +234,44 @@ export interface ChainVerifyResponse {
   total_records?: number;
   broken_at?: string;
   reason?: string;
+}
+
+export interface AgencyContract {
+  id: string;
+  property_id: string;
+  agency_name: string;
+  code: string;
+  start_date: string;
+  end_date: string;
+  guarantee_type: 'free' | 'guaranteed';
+  release_days: number;
+  commission: number;
+  cancellation_policy: string;
+  active: boolean;
+  allotments: ContractAllotment[];
+}
+
+export interface ContractAllotment {
+  id: string;
+  contract_id: string;
+  room_type_id: string;
+  date: string;
+  allotment: number;
+  sold: number;
+  release_date: string;
+  contracted_rate: number;
+  discount_pct: number;
+}
+
+export interface ContractAuditResult {
+  reservation_id: string;
+  contract_id: string;
+  agency_name: string;
+  status: 'ok' | 'on_request' | 'rejected' | 'price_discrepancy' | 'released';
+  reason: string;
+  contracted_rate: number;
+  applied_rate: number;
+  release_date: string;
 }
 
 export interface NightAuditSummary {
@@ -251,11 +288,10 @@ export interface NightAuditSummary {
   total_revenue: number;
   folios_closed: number;
   folios_open: number;
-  // Camps ampliats (na Maria, 08/09/2026)
-  payments_by_method?: Record<string, string>; // { "cash": "60.00", "card": "100.00", ... }
-  payments_total?: string; // total de pagaments capturats
-  extras_posted?: number; // nombre d'extres facturats a les sortides
-  extras_revenue?: string; // import total dels extres
+  payments_by_method?: Record<string, string>;
+  payments_total?: string;
+  extras_posted?: number;
+  extras_revenue?: string;
 }
 
 export interface NightAudit {
@@ -269,4 +305,3 @@ export interface NightAudit {
   summary: NightAuditSummary;
   error?: string;
 }
-

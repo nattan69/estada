@@ -23,6 +23,7 @@ export default function RootLayout({
               <a href="/rates" className="hover:text-brand-gold p-2 rounded">Rates</a>
               <a href="/guests" className="hover:text-brand-gold p-2 rounded">Guests</a>
               <a href="/reports" className="hover:text-brand-gold p-2 rounded">Reports</a>
+              <a href="/contracts" className="hover:text-brand-gold p-2 rounded">Agency Contracts</a>
               <a href="/fiscal" className="hover:text-brand-gold p-2 rounded">VeriFactu (Fiscal)</a>
               <a href="/night-audit" className="hover:text-brand-gold p-2 rounded">Night Audit</a>
               <a href="/settings/rooms" className="hover:text-brand-gold p-2 rounded">Rooms Settings</a>

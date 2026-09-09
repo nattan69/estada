@@ -11,7 +11,10 @@ import {
   ChainVerifyResponse,
   User,
   NightAudit,
-  NightAuditSummary
+  NightAuditSummary,
+  AgencyContract,
+  ContractAllotment,
+  ContractAuditResult
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -143,6 +146,34 @@ const MOCKS = {
       },
     },
   ] as NightAudit[],
+  contracts: [
+    {
+      id: 'con-1',
+      property_id: 'prop-1',
+      agency_name: 'Booking.com',
+      code: 'BOK-2026',
+      start_date: '2026-01-01',
+      end_date: '2026-12-31',
+      guarantee_type: 'guaranteed',
+      release_days: 7,
+      commission: 15,
+      cancellation_policy: 'Standard 48h',
+      active: true,
+      allotments: [
+        {
+          id: 'all-1',
+          contract_id: 'con-1',
+          room_type_id: 'rt-1',
+          date: '2026-09-10',
+          allotment: 5,
+          sold: 2,
+          release_date: '2026-09-03',
+          contracted_rate: 120,
+          discount_pct: 0,
+        }
+      ]
+    }
+  ] as AgencyContract[],
 };
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -169,6 +200,24 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
             return MOCKS.nightAudit.find(a => a.id === id) || MOCKS.nightAudit[0] as any;
         }
         return MOCKS.nightAudit as any;
+    }
+    if (endpoint.startsWith('/api/v1/contracts')) {
+        if (endpoint.includes('/audit/')) return {
+            reservation_id: 'res-1',
+            contract_id: 'con-1',
+            agency_name: 'Booking.com',
+            status: 'ok',
+            reason: 'Correct rate applied',
+            contracted_rate: 120,
+            applied_rate: 120,
+            release_date: '2026-09-03'
+        } as any;
+        if (endpoint.includes('/release')) return { released: 5 } as any;
+        if (endpoint.includes('/')) {
+            const id = endpoint.split('/').pop();
+            return MOCKS.contracts.find(c => c.id === id) || MOCKS.contracts[0] as any;
+        }
+        return MOCKS.contracts as any;
     }
 
     const mockKey = endpoint.split('/')[1] as keyof typeof MOCKS;
@@ -240,6 +289,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
+    update: (id: string, data: any) => request<Guest>(`/guests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
   },
   users: {
     list: () => request<User[]>(`/users`),
@@ -262,7 +316,7 @@ export const api = {
     cancel: (id: string) => request<void>(`/reservations/${id}/cancel`, { method: 'POST' }),
     checkIn: (id: string) => request<void>(`/reservations/${id}/check-in`, { method: 'POST' }),
     checkOut: (id: string) => request<void>(`/reservations/${id}/check-out`, { method: 'POST' }),
-    assignRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/assign-room`, { 
+    assignRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify({ room_id }) 
@@ -270,7 +324,7 @@ export const api = {
     changeRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ room_id }) 
+      body: JSON.stringify(data) 
     }),
   },
   availability: {
@@ -285,10 +339,10 @@ export const api = {
       })}`),
     quote: (data: { property_id: string, check_in: string, check_out: string, adults: number, children: number, rate_plan_id?: string }) => 
       request<any[]>(`/reservations/quote`, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(data) 
-      }),
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
   },
   folios: {
     get: (id: string) => request<Folio>(`/folios/${id}`),
@@ -298,16 +352,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    addPayment: (id: string, data: any) => request<void>(`/folios/${id}/payments`, { 
+    addPayment: (id: string, data: any) => request<void>(\`/folios/\${id}/charges\`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    close: (id: string) => request<void>(`/folios/${id}/close`, { method: 'POST' }),
+    close: (id: string) => request<void>(`/folios/${id}/close`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
   },
   housekeeping: {
     listTasks: (params: any) => request<HousekeepingTask[]>(`/housekeeping/tasks?${new URLSearchParams(params)}`),
-    updateTask: (id: string, data: any) => request<void>(`/housekeeping/tasks/${id}`, { 
+    updateTask: (id: string, data: any) => request<HousekeepingTask[]>(`/housekeeping/tasks/${id}`, { 
       method: 'PATCH', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
@@ -334,7 +392,7 @@ export const api = {
     getRecord: (id: string) => 
       request<FiscalRecord>(`/api/v1/fiscal/records/${id}`),
     verifyChain: (propertyId: string) => 
-      request<ChainVerifyResponse>(`/api/v1/fiscal/chain/verify?${new URLSearchParams({ propertyId })}`),
+      request<ChainVerifyResponse>(`/api/v1/fiscal/chain/verify?${new URLSearchParams({ propertyId })}),
   },
   nightAudit: {
     run: (data: { property_id: string, audit_date?: string }) => 
@@ -346,5 +404,32 @@ export const api = {
     list: (params: { propertyId?: string, audit_date?: string }) => 
       request<NightAudit[]>(`/api/v1/night-audit?${new URLSearchParams(params)}`),
     get: (id: string) => request<NightAudit>(`/api/v1/night-audit/${id}`),
+  },
+  contracts: {
+    list: (params?: { propertyId?: string }) => 
+      request<AgencyContract[]>(`/api/v1/contracts${params?.propertyId ? `?${new URLSearchParams({ propertyId: params.propertyId })}` : ''}`),
+    get: (id: string) => request<AgencyContract>(`/api/v1/contracts/${id}`),
+    create: (data: any) => request<AgencyContract>(`/api/v1/contracts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<AgencyContract>(`/api/v1/contracts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    remove: (id: string) => request<void>(`/api/v1/contracts/${id}`, {
+      method: 'DELETE',
+    }),
+    addAllotment: (id: string, data: any) => request<ContractAllotment>(`/api/v1/contracts/${id}/allotments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    audit: (reservationId: string) => request<ContractAuditResult>(`/api/v1/contracts/audit/${reservationId}`),
+    release: (params: { property_id: string, as_of?: string }) => request<{ released: number }>(`/api/v1/contracts/release?${new URLSearchParams(params)}`, {
+      method: 'POST',
+    }),
   }
 };
