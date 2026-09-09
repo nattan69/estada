@@ -20,6 +20,7 @@ export default function RootLayout({
               <a href="/front-desk" className="hover:text-brand-gold p-2 rounded">Front Desk</a>
               <a href="/reservations" className="hover:text-brand-gold p-2 rounded">Reservations</a>
               <a href="/housekeeping" className="hover:text-brand-gold p-2 rounded">Housekeeping</a>
+              <a href="/maintenance" className="hover:text-brand-gold p-2 rounded">Maintenance</a>
               <a href="/rates" className="hover:text-brand-gold p-2 rounded">Rates</a>
               <a href="/guests" className="hover:text-brand-gold p-2 rounded">Guests</a>
               <a href="/reports" className="hover:text-brand-gold p-2 rounded">Reports</a>

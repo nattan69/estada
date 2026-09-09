@@ -14,7 +14,8 @@ import {
   NightAuditSummary,
   AgencyContract,
   ContractAllotment,
-  ContractAuditResult
+  ContractAuditResult,
+  MaintenanceTask
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -142,7 +143,7 @@ const MOCKS = {
         other_revenue: 80,
         total_revenue: 980,
         folios_closed: 6,
-        folios_open: 6,
+        folios_open: 11,
       },
     },
   ] as NightAudit[],
@@ -174,7 +175,35 @@ const MOCKS = {
       ]
     }
   ] as AgencyContract[],
-};
+  maintenance: [
+    {
+      id: 'maint-1',
+      property_id: 'prop-1',
+      room_id: 'rm-1',
+      type: 'Electricitat',
+      description: 'La llum de la habitació no funciona',
+      priority: 1,
+      status: 'pendent',
+      created_by_id: 'usr-1',
+      reported_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'maint-2',
+      property_id: 'prop-1',
+      room_id: 'rm-2',
+      type: 'Plomeria',
+      description: 'Gotera al bany',
+      priority: 2,
+      status: 'en_curs',
+      created_by_id: 'usr-1',
+      reported_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  ] as MaintenanceTask[],
+},
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
@@ -218,6 +247,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
             return MOCKS.contracts.find(c => c.id === id) || MOCKS.contracts[0] as any;
         }
         return MOCKS.contracts as any;
+    }
+    if (endpoint.startsWith('/api/v1/maintenance')) {
+        if (endpoint.includes('/resolve')) {
+            const id = endpoint.split('/').pop();
+            const task = MOCKS.maintenance.find(t => t.id === id);
+            return { ...task, status: 'resolt', resolved_at: new Date().toISOString() } as any;
+        }
+        if (endpoint.includes('/')) {
+            const id = endpoint.split('/').pop();
+            return MOCKS.maintenance.find(t => t.id === id) || MOCKS.maintenance[0] as any;
+        }
+        return MOCKS.maintenance as any;
     }
 
     const mockKey = endpoint.split('/')[1] as keyof typeof MOCKS;
@@ -424,6 +465,23 @@ export const api = {
     audit: (reservationId: string) => request<ContractAuditResult>(`/api/v1/contracts/audit/${reservationId}`),
     release: (params: { property_id: string, as_of?: string }) => request<{ released: number }>(`/api/v1/contracts/release?${new URLSearchParams(params)}`, {
       method: 'POST',
+    }),
+  },
+  maintenance: {
+    list: (params?: { propertyId?: string, roomId?: string, status?: string }) => 
+      request<MaintenanceTask[]>(`/api/v1/maintenance?${new URLSearchParams(params || {})}`),
+    create: (data: any) => request<MaintenanceTask>(`/api/v1/maintenance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<MaintenanceTask>(`/api/v1/maintenance/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    resolve: (id: string) => request<MaintenanceTask>(`/api/v1/maintenance/${id}/resolve`, {
+      method: 'POST'
     }),
   }
 };
