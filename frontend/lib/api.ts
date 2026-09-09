@@ -289,10 +289,8 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
-    update: (id: string, data: any) => request<Guest>(`/guests/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+    delete: (id: string) => request<void>(`/guests/${id}`, {
+      method: 'DELETE',
     }),
   },
   users: {
@@ -316,7 +314,7 @@ export const api = {
     cancel: (id: string) => request<void>(`/reservations/${id}/cancel`, { method: 'POST' }),
     checkIn: (id: string) => request<void>(`/reservations/${id}/check-in`, { method: 'POST' }),
     checkOut: (id: string) => request<void>(`/reservations/${id}/check-out`, { method: 'POST' }),
-    assignRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
+    assignRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/assign-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify({ room_id }) 
@@ -324,7 +322,7 @@ export const api = {
     changeRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(data) 
+      body: JSON.stringify({ room_id }) 
     }),
   },
   availability: {
@@ -352,20 +350,16 @@ export const api = {
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    addPayment: (id: string, data: any) => request<void>(\`/folios/\${id}/charges\`, { 
+    addPayment: (id: string, data: any) => request<void>(`/folios/${id}/payments`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    close: (id: string) => request<void>(`/folios/${id}/close`, { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(data) 
-    }),
+    close: (id: string) => request<void>(`/folios/${id}/close`, { method: 'POST' }),
   },
   housekeeping: {
     listTasks: (params: any) => request<HousekeepingTask[]>(`/housekeeping/tasks?${new URLSearchParams(params)}`),
-    updateTask: (id: string, data: any) => request<HousekeepingTask[]>(`/housekeeping/tasks/${id}`, { 
+    updateTask: (id: string, data: any) => request<HousekeepingTask>(`/housekeeping/tasks/${id}`, { 
       method: 'PATCH', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
@@ -392,7 +386,7 @@ export const api = {
     getRecord: (id: string) => 
       request<FiscalRecord>(`/api/v1/fiscal/records/${id}`),
     verifyChain: (propertyId: string) => 
-      request<ChainVerifyResponse>(`/api/v1/fiscal/chain/verify?${new URLSearchParams({ propertyId })}),
+      request<ChainVerifyResponse>(`/api/v1/fiscal/chain/verify?${new URLSearchParams({ propertyId })}`),
   },
   nightAudit: {
     run: (data: { property_id: string, audit_date?: string }) => 
@@ -407,7 +401,7 @@ export const api = {
   },
   contracts: {
     list: (params?: { propertyId?: string }) => 
-      request<AgencyContract[]>(`/api/v1/contracts${params?.propertyId ? `?${new URLSearchParams({ propertyId: params.propertyId })}` : ''}`),
+      request<AgencyContract[]>(`/api/v1/contracts${params?.propertyId ? '?' + new URLSearchParams({ propertyId: params.propertyId }).toString() : ''}`),
     get: (id: string) => request<AgencyContract>(`/api/v1/contracts/${id}`),
     create: (data: any) => request<AgencyContract>(`/api/v1/contracts`, {
       method: 'POST',

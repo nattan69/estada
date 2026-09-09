@@ -224,6 +224,7 @@ export interface FiscalRecord {
     tax: number;
   }>;
   payload: any;
+  previous_hash: string;
   payload_hash: string;
   hash: string;
   issued_at: string;
