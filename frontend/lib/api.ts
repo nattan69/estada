@@ -15,7 +15,9 @@ import {
   AgencyContract,
   ContractAllotment,
   ContractAuditResult,
-  MaintenanceTask
+  MaintenanceTask,
+  RoomType,
+  RatePlan
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -251,16 +253,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   } catch (e) {
     console.warn(`Using mock for ${endpoint} due to error:`, e);
     
-    if (endpoint.startsWith('/fiscal/records')) {
+    if (endpoint.startsWith('/api/v1/fiscal/records')) {
         if (endpoint.includes('/records/')) {
             return MOCKS.fiscal.records[0] as any;
         }
         return MOCKS.fiscal.records as any;
     }
-    if (endpoint.startsWith('/fiscal/chain/verify')) {
+    if (endpoint.startsWith('/api/v1/fiscal/chain/verify')) {
         return MOCKS.fiscal.verify as any;
     }
-    if (endpoint.startsWith('/night-audit')) {
+    if (endpoint.startsWith('/api/v1/night-audit')) {
         if (endpoint.includes('/run')) return MOCKS.nightAudit[0] as any;
         if (endpoint.includes('/')) {
             const id = endpoint.split('/').pop();
@@ -299,7 +301,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         return MOCKS.maintenance as any;
     }
 
-    const mockKey = endpoint.split('/')[1] as keyof typeof MOCKS;
+    const mockKey = endpoint.split('/').filter(Boolean)[2] as keyof typeof MOCKS;
     if (MOCKS[mockKey]) {
       return MOCKS[mockKey] as any;
     }
@@ -309,7 +311,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   integrations: {
-    posRoomCharge: (data: any) => request<any>(`/integrations/pos/room-charges`, {
+    posRoomCharge: (data: any) => request<any>(`/api/v1/integrations/pos/room-charges`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -317,7 +319,7 @@ export const api = {
       },
       body: JSON.stringify(data)
     }),
-    otaWebhook: (data: any) => request<any>(`/integrations/ota/webhook`, {
+    otaWebhook: (data: any) => request<any>(`/api/v1/integrations/ota/webhook`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -325,7 +327,7 @@ export const api = {
       },
       body: JSON.stringify(data)
     }),
-    vccCharge: (data: any) => request<any>(`/integrations/payments`, {
+    vccCharge: (data: any) => request<any>(`/api/v1/integrations/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -333,49 +335,46 @@ export const api = {
   },
   rooms: {
     list: (params?: { propertyId?: string }) => 
-      request<Room[]>(`/rooms${params?.propertyId ? '?' + new URLSearchParams({ propertyId: params.propertyId }).toString() : ''}`),
-    get: (id: string) => request<Room>(`/rooms/${id}`),
-    create: (data: any) => request<Room>(`/rooms`, {
+      request<Room[]>(`/api/v1/rooms${params?.propertyId ? '?' + new URLSearchParams({ propertyId: params.propertyId }).toString() : ''}`),
+    get: (id: string) => request<Room>(`/api/v1/rooms/${id}`),
+    create: (data: any) => request<Room>(`/api/v1/rooms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
-    update: (id: string, data: any) => request<Room>(`/rooms/${id}`, {
+    update: (id: string, data: any) => request<Room>(`/api/v1/rooms/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
-    updateStatus: (id: string, data: any) => request<Room>(`/rooms/${id}/status`, {
+    updateStatus: (id: string, data: any) => request<Room>(`/api/v1/rooms/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
-  },
-  properties: {
-    list: () => request<Property[]>(`/properties`),
   },
   guests: {
     list: (params?: { email?: string }) => 
-      request<Guest[]>(`/guests${params?.email ? '?' + new URLSearchParams({ email: params.email }).toString() : ''}`),
-    get: (id: string) => request<Guest>(`/guests/${id}`),
-    create: (data: any) => request<Guest>(`/guests`, {
+      request<Guest[]>(`/api/v1/guests${params?.email ? '?' + new URLSearchParams({ email: params.email }).toString() : ''}`),
+    get: (id: string) => request<Guest>(`/api/v1/guests/${id}`),
+    create: (data: any) => request<Guest>(`/api/v1/guests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
-    update: (id: string, data: any) => request<Guest>(`/guests/${id}`, {
+    update: (id: string, data: any) => request<Guest>(`/api/v1/guests/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
-    delete: (id: string) => request<void>(`/guests/${id}`, {
+    delete: (id: string) => request<void>(`/api/v1/guests/${id}`, {
       method: 'DELETE',
     }),
   },
   users: {
-    list: () => request<User[]>(`/users`),
-    get: (id: string) => request<User>(`/users/${id}`),
-    create: (data: any) => request<User>(`/users`, {
+    list: () => request<User[]>(`/api/v1/users`),
+    get: (id: string) => request<User>(`/api/v1/users/${id}`),
+    create: (data: any) => request<User>(`/api/v1/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -383,30 +382,30 @@ export const api = {
   },
   reservations: {
     list: (params: { propertyId?: string, date?: string, status?: string }) => 
-      request<Reservation[]>(`/reservations?${new URLSearchParams(params)}`),
-    get: (id: string) => request<Reservation>(`/reservations/${id}`),
-    create: (data: any) => request<Reservation>(`/reservations`, { 
+      request<Reservation[]>(`/api/v1/reservations?${new URLSearchParams(params)}`),
+    get: (id: string) => request<Reservation>(`/api/v1/reservations/${id}`),
+    create: (data: any) => request<Reservation>(`/api/v1/reservations`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    cancel: (id: string) => request<void>(`/reservations/${id}/cancel`, { method: 'POST' }),
-    checkIn: (id: string) => request<void>(`/reservations/${id}/check-in`, { method: 'POST' }),
-    checkOut: (id: string) => request<void>(`/reservations/${id}/check-out`, { method: 'POST' }),
-    assignRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/assign-room`, { 
+    cancel: (id: string) => request<void>(`/api/v1/reservations/${id}/cancel`, { method: 'POST' }),
+    checkIn: (id: string) => request<void>(`/api/v1/reservations/${id}/check-in`, { method: 'POST' }),
+    checkOut: (id: string) => request<void>(`/api/v1/reservations/${id}/check-out`, { method: 'POST' }),
+    assignRoom: (id: string, room_id: string) => request<void>(`/api/v1/reservations/${id}/assign-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify({ room_id }) 
     }),
-    changeRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
+    changeRoom: (id: string, room_id: string) => request<void>(`/api/v1/reservations/${id}/change-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(data) 
+      body: JSON.stringify({ room_id }) 
     }),
   },
   availability: {
     search: (params: { propertyId: string, from: string, to: string, adults: number, children?: number, ratePlanId?: string }) => 
-      request<any[]>(`/availability?${new URLSearchParams({
+      request<any[]>(`/api/v1/availability?${new URLSearchParams({
         propertyId: params.propertyId,
         from: params.from,
         to: params.to,
@@ -415,49 +414,49 @@ export const api = {
         ...(params.ratePlanId ? { ratePlanId: params.ratePlanId } : {}),
       })}`),
     quote: (data: { property_id: string, check_in: string, check_out: string, adults: number, children: number, rate_plan_id?: string }) => 
-      request<any[]>(`/reservations/quote`, { 
+      request<any[]>(`/api/v1/reservations/quote`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
   },
   folios: {
-    get: (id: string) => request<Folio>(`/folios/${id}`),
-    listItems: (id: string) => request<FolioItem[]>(`/folios/${id}/items`),
-    addCharge: (id: string, data: any) => request<void>(`/folios/${id}/charges`, { 
+    get: (id: string) => request<Folio>(`/api/v1/folios/${id}`),
+    listItems: (id: string) => request<FolioItem[]>(`/api/v1/folios/${id}/items`),
+    addCharge: (id: string, data: any) => request<void>(`/api/v1/folios/${id}/charges`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    addPayment: (id: string, data: any) => request<void>(`/folios/${id}/payments`, { 
+    addPayment: (id: string, data: any) => request<void>(`/api/v1/folios/${id}/payments`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    close: (id: string) => request<void>(`/folios/${id}/close`, { method: 'POST' }),
+    close: (id: string) => request<void>(`/api/v1/folios/${id}/close`, { method: 'POST' }),
   },
   housekeeping: {
-    listTasks: (params: any) => request<HousekeepingTask[]>(`/housekeeping/tasks?${new URLSearchParams(params)}`),
-    updateTask: (id: string, data: any) => request<HousekeepingTask>(`/housekeeping/tasks/${id}`, { 
+    listTasks: (params: any) => request<HousekeepingTask[]>(`/api/v1/housekeeping/tasks?${new URLSearchParams(params)}`),
+    updateTask: (id: string, data: any) => request<HousekeepingTask>(`/api/v1/housekeeping/tasks/${id}`, { 
       method: 'PATCH', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
-    completeTask: (id: string) => request<void>(`/housekeeping/tasks/${id}/complete`, { method: 'POST' }),
+    completeTask: (id: string) => request<void>(`/api/v1/housekeeping/tasks/${id}/complete`, { method: 'POST' }),
   },
   rates: {
-    list: (params: any) => request<Rate[]>(`/rates?${new URLSearchParams(params)}`),
-    bulkUpsert: (data: any) => request<void>(`/rates/bulk-upsert`, { 
+    list: (params: any) => request<Rate[]>(`/api/v1/rates?${new URLSearchParams(params)}`),
+    bulkUpsert: (data: any) => request<void>(`/api/v1/rates/bulk-upsert`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
   },
   reports: {
-    occupancy: (params: any) => request<any>(`/reports/occupancy?${new URLSearchParams(params)}`),
-    revenue: (params: any) => request<any>(`/reports/revenue?${new URLSearchParams(params)}`),
-    arrivals: (params: any) => request<any>(`/reports/front-desk/arrivals?${new URLSearchParams(params)}`),
-    departures: (params: any) => request<any>(`/reports/front-desk/departures?${new URLSearchParams(params)}`),
+    occupancy: (params: any) => request<any>(`/api/v1/reports/occupancy?${new URLSearchParams(params)}`),
+    revenue: (params: any) => request<any>(`/api/v1/reports/revenue?${new URLSearchParams(params)}`),
+    arrivals: (params: any) => request<any>(`/api/v1/reports/front-desk/arrivals?${new URLSearchParams(params)}`),
+    departures: (params: any) => request<any>(`/api/v1/reports/front-desk/departures?${new URLSearchParams(params)}`),
   },
   fiscal: {
     listRecords: (params: { propertyId?: string, from?: string, to?: string }) => 

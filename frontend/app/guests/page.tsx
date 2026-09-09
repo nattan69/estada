@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { Table } from '@/components/ui/table';
 import { api } from '@/lib/api';
