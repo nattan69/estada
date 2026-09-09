@@ -351,6 +351,9 @@ export const api = {
       body: JSON.stringify(data)
     }),
   },
+  properties: {
+    list: () => request<Property[]>(`/properties`),
+  },
   guests: {
     list: (params?: { email?: string }) => 
       request<Guest[]>(`/guests${params?.email ? '?' + new URLSearchParams({ email: params.email }).toString() : ''}`),
