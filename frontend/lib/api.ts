@@ -203,6 +203,44 @@ const MOCKS = {
       updated_at: new Date().toISOString(),
     }
   ] as MaintenanceTask[],
+  properties: [
+    {
+      id: 'prop-1',
+      tenant_id: 'ten-1',
+      name: 'Hotel Estada Center',
+      code: 'EST-CTR',
+      timezone: 'Europe/Madrid',
+      currency: 'EUR',
+      address: { street: 'Carrer Major 1', city: 'Barcelona', zip: '08001' },
+      active: true,
+    }
+  ] as Property[],
+  roomTypes: [
+    {
+      id: 'rt-1',
+      property_id: 'prop-1',
+      code: 'DBL',
+      name: 'Habitación Doble',
+      description: 'Habitació doble estàndard amb llit matrimonial',
+      max_adults: 2,
+      max_children: 1,
+      base_occupancy: 2,
+      active: true,
+    }
+  ] as RoomType[],
+  ratePlans: [
+    {
+      id: 'rp-1',
+      property_id: 'prop-1',
+      code: 'BAR',
+      name: 'Best Available Rate',
+      description: 'Tarifa estàndard sense restriccions',
+      min_stay: 1,
+      max_stay: 30,
+      policies: { cancel_days: 24, deposit: false },
+      active: true,
+    }
+  ] as RatePlan[],
 };
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -289,10 +327,7 @@ export const api = {
     }),
     vccCharge: (data: any) => request<any>(`/integrations/payments`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-API-Key': 'POS_API_KEY'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
   },
@@ -363,7 +398,7 @@ export const api = {
     changeRoom: (id: string, room_id: string) => request<void>(`/reservations/${id}/change-room`, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ room_id }) 
+      body: JSON.stringify(data) 
     }),
   },
   availability: {
@@ -482,6 +517,48 @@ export const api = {
     }),
     resolve: (id: string) => request<MaintenanceTask>(`/api/v1/maintenance/${id}/resolve`, {
       method: 'POST'
+    }),
+  },
+  properties: {
+    list: () => request<Property[]>(`/api/v1/properties`),
+    get: (id: string) => request<Property>(`/api/v1/properties/${id}`),
+    create: (data: any) => request<Property>(`/api/v1/properties`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<Property>(`/api/v1/properties/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+  },
+  roomTypes: {
+    list: () => request<RoomType[]>(`/api/v1/room-types`),
+    get: (id: string) => request<RoomType>(`/api/v1/room-types/${id}`),
+    create: (data: any) => request<RoomType>(`/api/v1/room-types`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<RoomType>(`/api/v1/room-types/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+  },
+  ratePlans: {
+    list: () => request<RatePlan[]>(`/api/v1/rate-plans`),
+    get: (id: string) => request<RatePlan>(`/api/v1/rate-plans/${id}`),
+    create: (data: any) => request<RatePlan>(`/api/v1/rate-plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    update: (id: string, data: any) => request<RatePlan>(`/api/v1/rate-plans/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     }),
   }
 };

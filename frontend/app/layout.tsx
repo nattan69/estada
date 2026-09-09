@@ -28,6 +28,7 @@ export default function RootLayout({
               <a href="/fiscal" className="hover:text-brand-gold p-2 rounded">VeriFactu (Fiscal)</a>
               <a href="/night-audit" className="hover:text-brand-gold p-2 rounded">Night Audit</a>
               <a href="/settings/rooms" className="hover:text-brand-gold p-2 rounded">Rooms Settings</a>
+              <a href="/settings" className="hover:text-brand-gold p-2 rounded">General Settings</a>
             </nav>
           </aside>
           <main className="flex-1 p-8">
