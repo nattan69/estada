@@ -9,7 +9,16 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-import bcrypt
+import hashlib
+import hmac
+import os
+
+try:
+    import bcrypt
+    _HAS_BCRYPT = True
+except ImportError:  # p. ex. Termux/Android: sense wheels de bcrypt
+    _HAS_BCRYPT = False
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -22,21 +31,39 @@ from ..models.models import User
 # Esquema Bearer per extreure el token de l'header Authorization.
 _bearer = HTTPBearer(auto_error=False)
 
+# Iteracions per al fallback pbkdf2 (només quan bcrypt no és disponible).
+_PBKDF2_ITERATIONS = 260_000
+
 
 # ------------------------------------------------------------
 # Hashing de contrasenyes
 # ------------------------------------------------------------
 def hash_password(password: str) -> str:
-    """Retorna el hash bcrypt de la contrasenya (mai en clar)."""
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    """Retorna un hash de contrasenya: bcrypt si és disponible, si no pbkdf2 (stdlib)."""
+    if _HAS_BCRYPT:
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    salt = os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, _PBKDF2_ITERATIONS)
+    return f"pbkdf2$sha256${_PBKDF2_ITERATIONS}${salt.hex()}${dk.hex()}"
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """Comprova una contrasenya contra el seu hash bcrypt."""
-    try:
-        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
-    except (ValueError, TypeError):
-        return False
+    """Comprova una contrasenya contra el seu hash (bcrypt o pbkdf2)."""
+    if password_hash.startswith("pbkdf2$"):
+        try:
+            _, algo, iters, salt_hex, dk_hex = password_hash.split("$")
+            dk = hashlib.pbkdf2_hmac(
+                algo, password.encode("utf-8"), bytes.fromhex(salt_hex), int(iters)
+            )
+            return hmac.compare_digest(dk.hex(), dk_hex)
+        except (ValueError, TypeError):
+            return False
+    if _HAS_BCRYPT:
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        except (ValueError, TypeError):
+            return False
+    return False
 
 
 # ------------------------------------------------------------

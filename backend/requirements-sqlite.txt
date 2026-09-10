@@ -1,0 +1,10 @@
+# Estada PMS — dependències del camp de proves (SQLite, Termux/Android).
+# Sense psycopg2-binary (no hi ha wheels per Android, i SQLite no el necessita).
+# bcrypt és OPCIONAL: si no s'instal·la, security.py usa pbkdf2 (stdlib).
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-dotenv
+pyjwt
