@@ -1985,12 +1985,13 @@ l'ordinador quan fem la migracio.
 | GET /api/v1/rooms | 10 habitacions |
 | GET /api/v1/reservations | 45 reserves (tots els estats) |
 
-Detall menor pendent: `GET /reports/front-desk/arrivals` exigeix query param
-`date` obligatori; el frontend el crida sense data — cal default d'avui.
+Detall menor RESOLT (10/09, commit 825aa39 per na Maria): `GET /reports/front-desk/arrivals`
+i `/departures` ara tenen `date` opcional amb default d'avui.
 
 ### Proximes passes (reals)
-- [ ] Provar el frontend (tape chart + llista de reserves) contra el backend local.
-- [ ] Revisar el param 'date' obligatori a /reports/front-desk/arrivals.
+- [x] Provar el frontend (tape chart + llista de reserves) contra el backend local.
+- [x] Revisar el param 'date' obligatori a /reports/front-desk/arrivals (RESOLT: 825aa39, date opcional amb default avui).
+- [ ] Manual d'usuari: ampliat i redissenyat (sidebar + scrollspy + links creuats) — FET 10/09 (commits fd9f0c3, 719ab72).
 - [ ] Migracio a PostgreSQL (al PC) quan la fase de proves acabi.
 - [ ] Integracions reals: Comanda (room charges), Ariadna (reserves), Jornada (staff).
 - [ ] Fase 5: workers (channel manager, Docker/CI), deploy productiu.
