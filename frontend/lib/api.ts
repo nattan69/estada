@@ -407,6 +407,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
+    update: (id: string, data: any) => request<User>(`/api/v1/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    remove: (id: string) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
   },
   reservations: {
     list: (params: { propertyId?: string, date?: string, status?: string }) => 
