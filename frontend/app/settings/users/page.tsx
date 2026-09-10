@@ -76,7 +76,7 @@ export default function UsersPage() {
 
   function openEdit(u: User) {
     setEditingId(u.id);
-    setForm({ name: u.name, email: u.email, role: u.role, password: '' });
+    setForm({ name: u.name ?? '', email: u.email, role: u.role, password: '' });
   }
 
   function openCreate() {
