@@ -1991,10 +1991,20 @@ i `/departures` ara tenen `date` opcional amb default d'avui.
 ### Proximes passes (reals)
 - [x] Provar el frontend (tape chart + llista de reserves) contra el backend local.
 - [x] Revisar el param 'date' obligatori a /reports/front-desk/arrivals (RESOLT: 825aa39, date opcional amb default avui).
-- [ ] Manual d'usuari: ampliat i redissenyat (sidebar + scrollspy + links creuats) — FET 10/09 (commits fd9f0c3, 719ab72).
+- [x] Manual d'usuari: ampliat i redissenyat (sidebar + scrollspy + links creuats) — FET 10/09 (commits fd9f0c3, 719ab72).
+- [x] Guió de recorregut (docs/PROVA_RECORREGUT.md): 15 fallades detectades i corregides (08ecb1d), e2e verda — na Maria, 10/09.
+- [ ] Contractes al guió de recorregut (el backend ja ho suporta: contracts.py).
+- [ ] Modul d'assentaments comptables (encara no existeix).
+- [ ] Auth global: el backend encara NO exigeix token JWT; coordinar amb el frontend (que ja envia Bearer) per no trencar-lo.
+- [ ] Emissor room-charges a Comanda (pms_adapter multi-proveidor): el RECEPTOR a Estada ja fet (POST /integrations/pos/room-charges, idempotent).
 - [ ] Migracio a PostgreSQL (al PC) quan la fase de proves acabi.
-- [ ] Integracions reals: Comanda (room charges), Ariadna (reserves), Jornada (staff).
+- [ ] Integracions reals: Ariadna (reserves), Jornada (staff).
 - [ ] Fase 5: workers (channel manager, Docker/CI), deploy productiu.
+
+### Estat coordinat Flavia↔Maria (10/09 nit, per missatge de na Maria)
+- **Estada backend (na Maria):** fases 1-4 completes; camp de proves Termux operatiu; recorregut e2e verd (15 fixes, 08ecb1d); backend desplegat al PC (:8001) amb pricing/folio/facturacio/IVA.
+- **Comanda:** reanomenada nattan69/commanders → nattan69/comanda; auth PIN (DeviceSession) feta; integracio Ariadna feta. Falta l'emissor room-charges (pms_adapter).
+- **Frontend (na Flavia):** 23 pagines a frontend/app (dashboard, front-desk+tape-chart+arrivals+departures, reservations x3, folio detall, housekeeping, maintenance, rates, guests, reports, fiscal, night-audit, contracts, settings x4, login, index) — Fase 4 completa, trilingue, login JWT real i usuaris CRUD.
 
 ---
 
