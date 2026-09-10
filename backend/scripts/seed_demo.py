@@ -10,7 +10,7 @@ from app.database import SessionLocal, engine, Base
 from app.models.models import (
     Tenant, Property, RoomType, Room, RatePlan, Rate,
     Guest, Reservation, ReservationNight, Folio, FolioItem,
-    HousekeepingTask
+    HousekeepingTask, Inventory
 )
 from app.services.bootstrap import bootstrap
 
@@ -146,6 +146,27 @@ def seed_demo():
         db.commit()
         print("✅ Tarifas generadas para 30 días.")
 
+        # 5b. INVENTORY (disponibilidad) — imprescindible para que la cotización responda
+        for rt in room_types:
+            for day in range(30):
+                target_date = today + timedelta(days=day)
+                exists = db.query(Inventory).filter(
+                    Inventory.room_type_id == rt.id, Inventory.date == target_date
+                ).first()
+                if not exists:
+                    inv = Inventory(
+                        id=uuid.uuid4(),
+                        room_type_id=rt.id,
+                        date=target_date,
+                        allotment=5,
+                        sold=0,
+                        blocked=0,
+                        overbooking_allowed=0
+                    )
+                    db.add(inv)
+        db.commit()
+        print("✅ Inventario (disponibilidad) generado para 30 días.")
+
         # 6. GUESTS
         guests_data = [
             ("Juan", "Pérez", "juan@example.com", "12345678X"),
@@ -177,11 +198,18 @@ def seed_demo():
         rooms = db.query(Room).filter(Room.property_id == property_hotel.id).all()
         res_statuses = ["checked_out", "checked_in", "confirmed", "confirmed", "quote"]
 
-        for i in range(min(len(guests), 8)):
-            guest = guests[i]
+        # Iterar solo sobre los 5 guests demo (por email), no sobre toda la BD
+        demo_guests = [db.query(Guest).filter(Guest.email == em).first() for (_, _, em, _) in guests_data]
+
+        for i, guest in enumerate(demo_guests):
+            if guest is None:
+                continue
             rt = room_types[i % len(room_types)]
             rp = rate_plans[i % len(rate_plans)]
             status = res_statuses[i % len(res_statuses)]
+            conf_code = f"CONF-{1000+i}"
+            if db.query(Reservation).filter(Reservation.confirmation_code == conf_code).first():
+                continue
 
             # Fechas relativas
             if status == "checked_out":
@@ -201,7 +229,7 @@ def seed_demo():
                 room_type_id=rt.id,
                 rate_plan_id=rp.id,
                 assigned_room_id=rooms[i].id,
-                confirmation_code=f"CONF-{1000+i}",
+                confirmation_code=conf_code,
                 status=status,
                 source="direct_web",
                 check_in=check_in,
@@ -267,6 +295,11 @@ def seed_demo():
 
         # 8. HOUSEKEEPING TASKS
         for room in rooms[:5]:
+            if db.query(HousekeepingTask).filter(
+                HousekeepingTask.room_id == room.id,
+                HousekeepingTask.type == "cleaning"
+            ).first():
+                continue
             task = HousekeepingTask(
                 id=uuid.uuid4(),
                 property_id=property_hotel.id,

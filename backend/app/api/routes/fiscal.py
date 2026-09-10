@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 from ...database import get_db
 from ...models.models import FiscalRecord
-from ...schemas.schemas import FiscalRecordOut
+from ...schemas.schemas import FiscalRecordOut, InvoiceCreate
 from ...services import fiscal_service
 
 router = APIRouter()
@@ -37,3 +37,10 @@ def get_fiscal_record(record_id: UUID, db: Session = Depends(get_db)):
 @router.get("/chain/verify")
 def verify_fiscal_chain(propertyId: UUID, db: Session = Depends(get_db)):
     return fiscal_service.verify_chain(db, propertyId)
+
+@router.post("/invoices", response_model=FiscalRecordOut, status_code=status.HTTP_201_CREATED)
+def issue_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
+    try:
+        return fiscal_service.create_fiscal_record(db, payload.folio_id, payload.property_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

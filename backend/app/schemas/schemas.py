@@ -246,7 +246,7 @@ class ReservationBase(BaseModel):
     room_type_id: UUID
     rate_plan_id: Optional[UUID] = None
     assigned_room_id: Optional[UUID] = None
-    confirmation_code: str
+    confirmation_code: Optional[str] = None
     status: str = "confirmed"
     source: str = "direct_web"
     agency_code: Optional[str] = None
@@ -558,6 +558,10 @@ class FiscalRecordOut(BaseModel):
     previous_hash: str
     payload_hash: str
     hash: str
+
+class InvoiceCreate(BaseModel):
+    folio_id: UUID
+    property_id: UUID
 
 
 # ============================================================

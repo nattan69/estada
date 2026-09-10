@@ -23,7 +23,8 @@ def _build_vat_breakdown(folio: Folio) -> tuple[list[dict], Decimal, Decimal]:
     for item in folio.items:
         rate = Decimal(str(item.tax_rate or 0))
         gross = Decimal(item.amount)
-        net = gross / (1 + rate) if rate else gross
+        # tax_rate s'emmagatzema com a percentatge (10.0 = 10%), no com a fracció
+        net = gross / (1 + rate / 100) if rate else gross
         tax = gross - net
         g = groups.setdefault(
             str(rate), {"rate": str(rate), "base": Decimal("0"), "tax": Decimal("0")}

@@ -11,6 +11,10 @@ from ...schemas.schemas import FolioOut, ChargeCreate, DiscountCreate, PaymentCr
 
 router = APIRouter()
 
+def _assert_open(folio: Folio):
+    if folio.status == "closed":
+        raise HTTPException(status_code=400, detail="El folio está cerrado")
+
 @router.get("/{folio_id}", response_model=FolioOut)
 def get_folio(folio_id: UUID, db: Session = Depends(get_db)):
     folio = db.get(Folio, folio_id)
@@ -30,15 +34,17 @@ def add_charge(folio_id: UUID, payload: ChargeCreate, db: Session = Depends(get_
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
+    _assert_open(folio)
     
     amount = Decimal(str(payload.quantity)) * Decimal(str(payload.unit_price))
     item = FolioItem(
         folio_id=folio_id,
-        type="charge",
+        type=payload.type,
         description=payload.description,
         amount=amount,
         quantity=payload.quantity,
-        unit_price=payload.unit_price
+        unit_price=payload.unit_price,
+        tax_rate=payload.tax_rate
     )
     db.add(item)
     
@@ -54,6 +60,7 @@ def add_discount(folio_id: UUID, payload: DiscountCreate, db: Session = Depends(
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
+    _assert_open(folio)
     
     amount = -Decimal(str(payload.amount))
     item = FolioItem(
@@ -78,8 +85,13 @@ def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(ge
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
+    _assert_open(folio)
     
     amount = Decimal(str(payload.amount))
+    balance = (folio.balance or Decimal("0"))
+    if amount > balance:
+        raise HTTPException(status_code=400, detail="El pago excede el saldo pendiente")
+    
     payment = Payment(
         folio_id=folio_id,
         provider=payload.provider,
@@ -105,6 +117,7 @@ def add_refund(folio_id: UUID, payload: RefundCreate, db: Session = Depends(get_
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
+    _assert_open(folio)
     
     amount = -Decimal(str(payload.amount))
     payment = Payment(
@@ -130,7 +143,7 @@ def close_folio(folio_id: UUID, db: Session = Depends(get_db)):
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
     
-    if folio.balance != 0:
+    if (folio.balance or Decimal("0")) != 0:
         raise HTTPException(status_code=400, detail="El folio no tiene saldo cero")
     
     folio.status = "closed"
