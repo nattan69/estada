@@ -245,8 +245,36 @@ const MOCKS = {
   ] as RatePlan[],
 };
 
+// ============================================================
+// Gestió del token d'auth (JWT) — guardar/leure/esborrar
+// ============================================================
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('estada_access_token');
+}
+
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('estada_refresh_token');
+}
+
+export function setTokens(access_token: string, refresh_token: string): void {
+  localStorage.setItem('estada_access_token', access_token);
+  localStorage.setItem('estada_refresh_token', refresh_token);
+}
+
+export function logout(): void {
+  localStorage.removeItem('estada_access_token');
+  localStorage.removeItem('estada_refresh_token');
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
+    // Afegir el header Authorization: Bearer si hi ha token guardat
+    const token = getToken();
+    if (token) {
+      options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+    }
     const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
     if (!response.ok) throw new Error(`API error: ${response.status}`);
     return await response.json();
@@ -562,5 +590,31 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }),
+  },
+  // Auth JWT real — SENSE fallback al mock (si el backend cau, el login falla i és correcte)
+  auth: {
+    login: (email: string, password: string) =>
+      fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      }).then(async (r) => {
+        if (!r.ok) throw new Error(`Login fallat: ${r.status}`);
+        const data = await r.json();
+        setTokens(data.access_token, data.refresh_token);
+        return data;
+      }),
+    refresh: (refresh_token: string) =>
+      fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token })
+      }).then(async (r) => {
+        if (!r.ok) throw new Error(`Refresh fallat: ${r.status}`);
+        const data = await r.json();
+        setTokens(data.access_token, data.refresh_token);
+        return data;
+      }),
+    me: () => request<User>(`/api/v1/auth/me`),
   }
 };

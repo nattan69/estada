@@ -1,5 +1,6 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
+import LogoutButton from '@/components/LogoutButton';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -29,6 +30,8 @@ export default function RootLayout({
               <a href="/night-audit" className="hover:text-brand-gold p-2 rounded">Night Audit</a>
               <a href="/settings/rooms" className="hover:text-brand-gold p-2 rounded">Rooms Settings</a>
               <a href="/settings" className="hover:text-brand-gold p-2 rounded">General Settings</a>
+              <a href="/login" className="hover:text-brand-gold p-2 rounded">Login</a>
+              <LogoutButton />
             </nav>
           </aside>
           <main className="flex-1 p-8">
