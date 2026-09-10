@@ -116,20 +116,22 @@ def get_revpar(
 
 @router.get("/front-desk/arrivals", response_model=List[ReservationOut])
 def get_arrivals(
-    date: date, 
+    date_param: Optional[date] = Query(None, alias="date"),
     db: Session = Depends(get_db)
 ):
+    target = date_param or date.today()
     return db.query(Reservation).filter(
-        Reservation.check_in == date,
+        Reservation.check_in == target,
         Reservation.status.in_(["confirmed", "checked_in"])
     ).all()
 
 @router.get("/front-desk/departures", response_model=List[ReservationOut])
 def get_departures(
-    date: date, 
+    date_param: Optional[date] = Query(None, alias="date"),
     db: Session = Depends(get_db)
 ):
+    target = date_param or date.today()
     return db.query(Reservation).filter(
-        Reservation.check_out == date,
+        Reservation.check_out == target,
         Reservation.status == "checked_in"
     ).all()
