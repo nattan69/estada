@@ -1955,48 +1955,45 @@ El MVP esta funcional quan pots fer aixo de punta a punta:
 
 ---
 
-## 15. Proximes passes
+## 15. Estat del projecte i camp de proves
 
-### Fase 1: Estructura i model (na Maria)
-- [ ] Crear estructura de directoris (backend/app/...)
-- [ ] `config.py` amb settings (DB, Redis, API keys, VeriFactu)
-- [ ] `database.py` (engine, SessionLocal, Base)
-- [ ] Tots els models SQLAlchemy (seccio 5)
-- [ ] `FiscalRecord` + `FiscalSequence` + servei de hash chaining (seccio 12)
-- [ ] Pydantic schemas
-- [ ] Alembic: migracions desde el primer dia (NO `create_all`).
+> Actualitzat: 10/09/2026. Les fases 1-4 estan COMPLETADES (vegeu la bitacora_estada.md
+> al Drive per al detall dia a dia).
 
-### Fase 2: API core (na Maria)
-- [ ] Auth (login, refresh, me) amb JWT
-- [ ] CRUD propietats, tipus d'habitacio, habitacions
-- [ ] Tarifes i inventari (bulk-upsert)
-- [ ] Motor de disponibilitat + cotitzacio
-- [ ] Reserves (crear, modificar, cancelar, check-in/out)
-- [ ] Folio (cargs, pagaments, tancar)
-- [ ] VeriFactu: emitir factura al tancar folio + verificar cadena
-- [ ] Tests e2e (verify_e2e.py, mateix patro que Comanda)
+### Fases completades
+- [x] **Fase 1 — Estructura i model** (na Maria): 19 models SQLAlchemy + 10 enums, schemas Pydantic, hash chaining VeriFactu.
+- [x] **Fase 2 — API core** (na Maria): auth JWT real (login/refresh/me + users), CRUD complet, disponibilitat + quote, reserves, folios, housekeeping, reports, fiscal, night audit, contractes, manteniment. 45+ endpoints testats.
+- [x] **Fase 3 — Integracions** (na Maria): POS room-charges, OTA webhook, VCC + outbox worker (esdeveniments de domini).
+- [x] **Fase 4 — Frontend** (na Flavia + na Gemma4): dashboard, tape-chart, reserves, folios, housekeeping + manteniment (SSTT), rates, guests, reports, VeriFactu, night audit, contractes, integracions, configuracio, **login JWT real** i **usuaris CRUD**. Trilingue ca/es/en.
 
-### Fase 3: Integracions (na Maria)
-- [ ] `POST /integrations/pos/room-charges` (Comanda → Estada)
-- [ ] Config `POS_API_KEY` + `ARIADNA_API_KEY`
-- [ ] Auth per Ariadna (API key o JWT amb rol reception)
-- [ ] Outbox events + worker dispatcher
+### Camp de proves (Termux/Android, SQLite) — OPERATIU
+Decisio d'en Tomeu: camp de proves al mobil (Termux + SQLite) ara; PostgreSQL a
+l'ordinador quan fem la migracio.
 
-### Fase 4: Frontend (na Flavia)
-- [ ] Dashboard
-- [ ] Tape chart (calendari d'ocupacio)
-- [ ] Reserves (llistat, creacio, fitxa)
-- [ ] Folio (cargs, pagaments)
-- [ ] Housekeeping board
-- [ ] Rates (tarifes i restriccions)
-- [ ] Reports
+- Arrencada: `python -m uvicorn app.main:app --host 0.0.0.0 --port 8001`
+  (el `run_termux.sh` falla a Android perque maturin/pydantic-core no compilen;
+  el venv d'Hermes ja te totes les deps — pydantic 2.13, fastapi 0.139, sqlalchemy 2.0.51).
+- BD `estada.db` amb auto-bootstrap (taules + admin inicial).
+- Seeds: `seed_demo.py` (propietat, habitacions, tarifes 30 dies, folios, tasques)
+  i despres `seed_reservations.py` (40 reserves ficticies).
 
-### Fase 5: Workers i operacio
-- [ ] Night audit
-- [ ] Channel manager sync (OTAs)
-- [ ] Emails pre-stay
-- [ ] Docker + CI/CD
-- [ ] Deploy
+**Prova d'integracio frontend↔backend SUPERADA (10/09):**
+| Prova | Resultat |
+|---|---|
+| POST /api/v1/auth/login | JWT rebut |
+| GET /api/v1/auth/me | user complet (owner) |
+| GET /api/v1/rooms | 10 habitacions |
+| GET /api/v1/reservations | 45 reserves (tots els estats) |
+
+Detall menor pendent: `GET /reports/front-desk/arrivals` exigeix query param
+`date` obligatori; el frontend el crida sense data — cal default d'avui.
+
+### Proximes passes (reals)
+- [ ] Provar el frontend (tape chart + llista de reserves) contra el backend local.
+- [ ] Revisar el param 'date' obligatori a /reports/front-desk/arrivals.
+- [ ] Migracio a PostgreSQL (al PC) quan la fase de proves acabi.
+- [ ] Integracions reals: Comanda (room charges), Ariadna (reserves), Jornada (staff).
+- [ ] Fase 5: workers (channel manager, Docker/CI), deploy productiu.
 
 ---
 
