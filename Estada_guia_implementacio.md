@@ -1994,7 +1994,7 @@ i `/departures` ara tenen `date` opcional amb default d'avui.
 - [x] Manual d'usuari: ampliat i redissenyat (sidebar + scrollspy + links creuats) — FET 10/09 (commits fd9f0c3, 719ab72).
 - [x] Guió de recorregut (docs/PROVA_RECORREGUT.md): 15 fallades detectades i corregides (08ecb1d), e2e verda — na Maria, 10/09.
 - [ ] Contractes al guió de recorregut (el backend ja ho suporta: contracts.py).
-- [ ] Modul d'assentaments comptables (encara no existeix).
+- [ ] Comptabilitat externalitzada: nou projecte COMPTA (nattan69/compta) — Estada hi emetra tancaments (folio/night audit) via API, no fa comptabilitat propia (decidit 10/09 nit).
 - [ ] Auth global: el backend encara NO exigeix token JWT; coordinar amb el frontend (que ja envia Bearer) per no trencar-lo.
 - [ ] Emissor room-charges a Comanda (pms_adapter multi-proveidor): el RECEPTOR a Estada ja fet (POST /integrations/pos/room-charges, idempotent).
 - [ ] Migracio a PostgreSQL (al PC) quan la fase de proves acabi.
