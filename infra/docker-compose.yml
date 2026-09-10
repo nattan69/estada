@@ -1,0 +1,47 @@
+# Stack de despliegue de Estada (Fase 5: Docker + Deploy).
+# Levanta Postgres + Redis + backend con `docker compose up -d`.
+# Puertos: Postgres 5433, Redis 6380 (evitan conflicto con Comanda 5432/6379).
+services:
+  postgres:
+    image: postgres:16
+    container_name: estada_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: estada
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d estada"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: estada_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+
+  backend:
+    build:
+      context: ../backend
+    container_name: estada_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/estada
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@estada.local}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-cambia-esta-contrasenya}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
