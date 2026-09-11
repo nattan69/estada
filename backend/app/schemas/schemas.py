@@ -515,6 +515,17 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
 
+class TokenExchangeRequest(BaseModel):
+    """Petición de intercambio de token por otro restringido a una audiencia."""
+    audience: str
+
+class AudienceTokenResponse(BaseModel):
+    """Token de corta duración restringido a una audiencia (otra app)."""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    audience: str
+
 class AvailabilityRequest(BaseModel):
     property_id: UUID
     check_in: date

@@ -2,9 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from ...config import settings
 from ...database import get_db
 from ...models.models import User
-from ...schemas.schemas import LoginRequest, RefreshRequest, TokenResponse, UserOut
+from ...schemas.schemas import (
+    LoginRequest,
+    RefreshRequest,
+    TokenResponse,
+    TokenExchangeRequest,
+    AudienceTokenResponse,
+    UserOut,
+)
 from ...services import security
 
 router = APIRouter()
@@ -54,6 +62,36 @@ def refresh(
     return TokenResponse(
         access_token=security.create_access_token(user),
         refresh_token=security.create_refresh_token(user),
+    )
+
+
+@router.post("/token", response_model=AudienceTokenResponse)
+def exchange_token(
+    payload: TokenExchangeRequest,
+    user: User = Depends(security.get_current_user),
+):
+    """Intercambia el token actual por otro restringido a otra audiencia (app).
+
+    Es el mecanismo para que el frontend obtenga un token válido para Compta,
+    Comanda, etc. sin volver a pedir credenciales: Estada (emisor) emite un
+    token de corta duración cuyo `aud` apunta a la app de destino.
+    """
+    audience = payload.audience
+    if audience not in settings.JWT_ALLOWED_AUDIENCES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Audiencia no permitida: {audience}",
+        )
+    access_token = security.create_access_token(
+        user,
+        audience=audience,
+        expires_minutes=settings.AUDIENCE_TOKEN_EXPIRE_MINUTES,
+    )
+    return AudienceTokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.AUDIENCE_TOKEN_EXPIRE_MINUTES * 60,
+        audience=audience,
     )
 
 

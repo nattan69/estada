@@ -19,10 +19,18 @@ class Settings(BaseSettings):
     OTA_API_KEY: str = ''
 
     # Seguridad / autenticación (JWT).
-    JWT_SECRET: str = 'cambia-este-secreto-en-produccion'
-    JWT_ALGORITHM: str = 'HS256'
+    # Estada es el EMISOR global de tokens del ecosistema Conceptes: firma con
+    # RS256 (clave privada local, sin versionar) y publica la clave pública en
+    # `/.well-known/jwks.json` para que el resto de apps validen localmente.
+    JWT_SECRET: str = 'cambia-este-secreto-en-produccion'  # solo fallback HS256 (sin `cryptography`)
+    JWT_ALGORITHM: str = 'RS256'
+    JWT_ISSUER: str = 'https://estada.sapedrera.eu'  # `iss` de los tokens emitidos
+    JWT_AUDIENCE: str = 'estada'                     # audiencia por defecto (la propia app)
+    JWT_ALLOWED_AUDIENCES: List[str] = ['estada', 'compta', 'comanda', 'jornada', 'ariadna']
+    JWT_PRIVATE_KEY_PATH: str = 'keys/jwt_private.pem'  # clave privada (auto-generada si falta)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 hores (torn de recepció)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    AUDIENCE_TOKEN_EXPIRE_MINUTES: int = 15  # token restringido a otra app (corta duración)
 
     # Bootstrap: usuari owner inicial (es crea només si la BD està buida).
     BOOTSTRAP_ADMIN_EMAIL: str = 'admin@estada.local'

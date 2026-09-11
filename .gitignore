@@ -4,3 +4,6 @@ __pycache__/
 *.db
 .env
 .tasca_*.md
+
+# Claves JWT (RS256). La privada NO debe versionarse; la pública se deriva.
+backend/keys/
