@@ -4,9 +4,10 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+import logging
 
 from ...database import get_db
-from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room, User, Property, BillingMode, Payment, PaymentType, PaymentStatus, FolioItemType
+from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room, User, Property, BillingMode, Payment, PaymentType, PaymentStatus, FolioItemType, AccountCode, JournalEntrySource
 from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse, FolioOut, CheckInRequest
 from ...services.availability_service import search_availability
 from ...services.pricing_service import build_reservation_breakdown
@@ -14,6 +15,8 @@ from ...services.journal_service import journal_payment, journal_checkin_taxes
 from ...services.security import require_roles
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 # Mètodes de pagament del check-in (select): valor d'entrada → method del Payment.
 _PAYMENT_METHOD_MAP = {"cash": "cash", "card": "card", "transfer": "bank", "deposit": "deposit"}
@@ -241,26 +244,76 @@ def check_in_reservation(reservation_id: UUID, payload: CheckInRequest = CheckIn
     return {"message": "Check-in realizado", "folio_id": str(folio.id)}
 
 @router.post("/{reservation_id}/check-out")
-def check_out_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
+def check_out_reservation(reservation_id: UUID, payload: CheckInRequest = CheckInRequest(), db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     if res.status != "checked_in":
         raise HTTPException(status_code=400, detail="La reserva no está en check-in")
-    
-    # Cerrar el folio si existe y está saldado
+
     folio = res.folio
     if folio is not None and folio.status != "closed":
-        if (folio.balance or Decimal("0")) != 0:
-            raise HTTPException(
-                status_code=400,
-                detail="El folio tiene saldo pendiente. Liquide la cuenta antes del check-out"
+        prop = db.get(Property, res.property_id)
+        prepaid = (prop.billing_mode == BillingMode.PREPAID.value) if prop else True
+
+        if not prepaid:
+            # POSTPAID (factura a la sortida): calcular IVA + ecotaxa, postar-los
+            # com a càrrecs (deute del client), cobrar el saldo i tancar.
+            bd = build_reservation_breakdown(db, res)
+            vat_total = bd["vat_room"] + bd["vat_meal"] + bd["vat_ecotaxa"]
+            ecotaxa_total = bd["ecotaxa"]
+            entry_date = res.check_out or date.today()
+
+            if vat_total > 0:
+                db.add(FolioItem(folio_id=folio.id, type=FolioItemType.TAX.value, description="IVA", quantity=1, unit_price=vat_total, tax_rate=Decimal("0"), amount=vat_total, account_code="vat_payable"))
+                folio.total_amount = (folio.total_amount or Decimal("0")) + vat_total
+            if ecotaxa_total > 0:
+                db.add(FolioItem(folio_id=folio.id, type=FolioItemType.TAX.value, description="Ecotaxa (ITS)", quantity=1, unit_price=ecotaxa_total, tax_rate=Decimal("0"), amount=ecotaxa_total, account_code="tax_payable"))
+                folio.total_amount = (folio.total_amount or Decimal("0")) + ecotaxa_total
+
+            folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+
+            # Cobrar el saldo pendent (settlement) amb el mètode indicat.
+            saldo = folio.balance or Decimal("0")
+            if saldo > 0:
+                method = _PAYMENT_METHOD_MAP.get(payload.payment_method, "cash")
+                db.add(Payment(folio_id=folio.id, provider="manual", method=method, payment_type=PaymentType.SETTLEMENT.value, status=PaymentStatus.CAPTURED.value, amount=saldo, currency=res.currency or "EUR", captured_at=datetime.now()))
+                folio.paid_amount = (folio.paid_amount or Decimal("0")) + saldo
+                folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+
+            # Assentaments: IVA + ecotaxa (D AR) i cobrament del saldo.
+            journal_checkin_taxes(
+                db, property_id=res.property_id, folio_id=folio.id,
+                vat_amount=vat_total, ecotaxa_amount=ecotaxa_total,
+                entry_date=entry_date,
+                debit_account=AccountCode.ACCOUNTS_RECEIVABLE.value,
+                source=JournalEntrySource.CHECKOUT.value,
             )
+            if saldo > 0:
+                journal_payment(
+                    db, property_id=res.property_id, folio_id=folio.id,
+                    amount=saldo, entry_date=entry_date,
+                    payment_type=PaymentType.SETTLEMENT.value,
+                )
+        else:
+            # PREPAID: ja s'ha cobrat tot al check-in; el foli ha d'estar saldat.
+            if (folio.balance or Decimal("0")) != 0:
+                raise HTTPException(status_code=400, detail="El folio tiene saldo pendiente. Liquide la cuenta antes del check-out")
+
         folio.status = "closed"
         folio.closed_at = datetime.now()
-    
+
     res.status = "checked_out"
     db.commit()
+
+    # Emetre els assentaments pendents del foli a Compta (idempotent).
+    if folio is not None:
+        try:
+            from ...services.compta_client import emit_pending_folio_entries
+            emit_pending_folio_entries(db, folio)
+        except Exception as e:
+            logger.warning(f"[COMPTA] error emetent tancament del foli {folio.id}: {e}")
+
     return {"message": "Check-out realizado"}
 
 @router.post("/{reservation_id}/assign-room")

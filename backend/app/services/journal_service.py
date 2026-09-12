@@ -274,19 +274,22 @@ def journal_checkin_taxes(
     vat_amount: Decimal,
     ecotaxa_amount: Decimal,
     entry_date: date,
+    debit_account: str = AccountCode.ADVANCE_CUSTOMERS.value,
+    source: str = JournalEntrySource.CHECKIN.value,
 ) -> JournalEntry:
-    """Reconeix l'IVA i l'ecotaxa al check-in (factura a l'entrada).
+    """Reconeix l'IVA i l'ecotaxa facturats (a l'entrada o a la sortida).
 
-    Consumeix la bestreta (D ADVANCE_CUSTOMERS) contra el passiu d'IVA
-    (H VAT_PAYABLE) i la taxa turística (H TAX_PAYABLE). L'IVA de l'ecotaxa
-    s'inclou dins `vat_amount` (es merita al cobrament, art. 75.2 LIVA).
+    - Prepaid (check-in): consumeix la bestreta (D ADVANCE_CUSTOMERS).
+    - Postpaid (check-out): genera deute (D ACCOUNTS_RECEIVABLE).
+
+    H VAT_PAYABLE (IVA + IVA de l'ecotaxa) + H TAX_PAYABLE (ITS).
     """
     vat_amount = Decimal(str(vat_amount or 0))
     ecotaxa_amount = Decimal(str(ecotaxa_amount or 0))
     total_debit = vat_amount + ecotaxa_amount
     lines: list[tuple[str, Decimal, Decimal]] = []
     if total_debit > 0:
-        lines.append((AccountCode.ADVANCE_CUSTOMERS.value, total_debit, Decimal("0")))
+        lines.append((debit_account, total_debit, Decimal("0")))
     if vat_amount > 0:
         lines.append((AccountCode.VAT_PAYABLE.value, Decimal("0"), vat_amount))
     if ecotaxa_amount > 0:
@@ -294,10 +297,10 @@ def journal_checkin_taxes(
     return _post_entry(
         db,
         property_id=property_id,
-        source=JournalEntrySource.CHECKIN.value,
+        source=source,
         entry_type=JournalEntryType.TAX_COLLECTED.value,
         entry_date=entry_date,
         folio_id=folio_id,
-        description="IVA i ecotaxa facturats a l'entrada",
+        description="IVA i ecotaxa facturats",
         lines=lines,
     )
