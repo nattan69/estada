@@ -276,9 +276,27 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
     }
     const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+      // Sessió expirada o token invàlid → redirigir a login (no caure als mocks).
+      if (response.status === 401) {
+        logout();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
+      let detail = `API error: ${response.status}`;
+      try {
+        const body = await response.json();
+        if (body && body.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+      } catch { /* sense cos d'error JSON */ }
+      const err: any = new Error(detail);
+      err.status = response.status;
+      throw err;
+    }
+    if (response.status === 204) return undefined as T;
     return await response.json();
-  } catch (e) {
+  } catch (e: any) {
+    if (e && e.status) throw e; // Error HTTP real: propagar-lo, no emmascarar-lo amb mocks
     console.warn(`Using mock for ${endpoint} due to error:`, e);
     
     if (endpoint.startsWith('/api/v1/fiscal/records')) {
@@ -379,6 +397,9 @@ export const api = {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
+    }),
+    delete: (id: string) => request<void>(`/api/v1/rooms/${id}`, {
+      method: 'DELETE',
     }),
   },
   guests: {

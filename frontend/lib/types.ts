@@ -59,6 +59,7 @@ export interface Room {
   room_type_id: string;
   number: string;
   floor?: string;
+  features?: string[];
   status: RoomStatus;
   active: boolean;
 }
