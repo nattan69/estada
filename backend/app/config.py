@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     BOOTSTRAP_TENANT_NAME: str = 'Estada'
     BOOTSTRAP_TENANT_SLUG: str = 'estada'
 
+    # Compta (hub comptable): emissió de tancaments de foli + night audit.
+    COMPTA_URL: str = 'http://localhost:8010'
+    COMPTA_KEY_ESTADA: str = ''
+
     model_config = SettingsConfigDict(
         env_file='.env',
         extra='ignore'

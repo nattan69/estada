@@ -40,10 +40,10 @@ _MAP: dict[str, str] = {
 
 
 def _cfg():
-    import os
+    from ..config import settings
     return (
-        os.environ.get("COMPTA_URL", COMPTA_URL),
-        os.environ.get("COMPTA_KEY_ESTADA", "std_3fHn8wRt5cB2"),
+        settings.COMPTA_URL,
+        settings.COMPTA_KEY_ESTADA,
     )
 
 
