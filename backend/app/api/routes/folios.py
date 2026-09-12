@@ -6,8 +6,9 @@ from datetime import datetime
 from decimal import Decimal
 
 from ...database import get_db
-from ...models.models import Folio, FolioItem, Payment
+from ...models.models import Folio, FolioItem, Payment, PaymentType
 from ...schemas.schemas import FolioOut, ChargeCreate, DiscountCreate, PaymentCreate, RefundCreate, FolioItemOut, PaymentOut
+from ...services.journal_service import journal_payment
 
 router = APIRouter()
 
@@ -44,7 +45,8 @@ def add_charge(folio_id: UUID, payload: ChargeCreate, db: Session = Depends(get_
         amount=amount,
         quantity=payload.quantity,
         unit_price=payload.unit_price,
-        tax_rate=payload.tax_rate
+        tax_rate=payload.tax_rate,
+        account_code=payload.account_code,
     )
     db.add(item)
     
@@ -89,13 +91,18 @@ def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(ge
     
     amount = Decimal(str(payload.amount))
     balance = (folio.balance or Decimal("0"))
-    if amount > balance:
+    is_advance = payload.payment_type in (PaymentType.ADVANCE.value, PaymentType.DEPOSIT.value)
+    # Les bestretes (advance/deposit) es poden cobrar encara que el foli no
+    # tingui càrrecs (pagament anticipat); la liquidació del saldo no pot
+    # excedir el deute pendent.
+    if not is_advance and amount > balance:
         raise HTTPException(status_code=400, detail="El pago excede el saldo pendiente")
     
     payment = Payment(
         folio_id=folio_id,
         provider=payload.provider,
         method=payload.method,
+        payment_type=payload.payment_type,
         amount=amount,
         currency=payload.currency,
         external_ref=payload.external_ref,
@@ -107,6 +114,16 @@ def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(ge
     
     folio.paid_amount = (folio.paid_amount or Decimal("0")) + amount
     folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+    
+    # Assentament comptable del cobrament (bestreta o saldo).
+    journal_payment(
+        db,
+        property_id=folio.property_id,
+        folio_id=folio.id,
+        amount=amount,
+        entry_date=datetime.now().date(),
+        payment_type=payload.payment_type,
+    )
     
     db.commit()
     db.refresh(payment)

@@ -34,17 +34,23 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from ..models.models import (
+    BillingMode,
     Folio,
     FolioItem,
     FolioItemType,
+    MealPlan,
     NightAudit,
     Payment,
     PaymentStatus,
+    PaymentType,
+    Property,
     Reservation,
     ReservationNight,
     ReservationStatus,
     Room,
 )
+
+from .journal_service import journal_meal, journal_room_night
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +72,15 @@ def _get_or_create_folio(db: Session, reservation: Reservation) -> Folio:
     return folio
 
 
-def _post_room_night(db: Session, reservation: Reservation, night: ReservationNight) -> FolioItem:
-    """Posta la nit d'una reserva al seu folio com a `room_night`."""
+def _post_room_night(
+    db: Session,
+    reservation: Reservation,
+    night: ReservationNight,
+    prepaid: bool,
+    night_audit_id: UUID | None = None,
+) -> FolioItem:
+    """Posta la nit d'una reserva al seu folio com a `room_night` i genera
+    l'assentament comptable de reconeixement de l'ingrés."""
     folio = _get_or_create_folio(db, reservation)
     amount = Decimal(str(night.amount or 0))
     item = FolioItem(
@@ -82,6 +95,59 @@ def _post_room_night(db: Session, reservation: Reservation, night: ReservationNi
     db.add(item)
     folio.total_amount = (folio.total_amount or Decimal("0")) + amount
     folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+
+    # Assentament comptable: reconeixement de l'ingrés de la nit.
+    # Segons el mode de facturació: prepaid aplica la bestreta; postpaid
+    # genera el deute del client (que es cancel·la amb la factura a la sortida).
+    journal_room_night(
+        db,
+        property_id=reservation.property_id,
+        folio_id=folio.id,
+        amount=amount,
+        entry_date=night.date,
+        prepaid=prepaid,
+        night_audit_id=night_audit_id,
+    )
+    return item
+
+
+def _post_meal(
+    db: Session,
+    reservation: Reservation,
+    night: ReservationNight,
+    prepaid: bool,
+    night_audit_id: UUID | None = None,
+) -> FolioItem | None:
+    """Posta la pensió diària al foli i genera el seu assentament.
+
+    Retorna `None` si la reserva no té pensió (room_only o preu 0).
+    """
+    amount = Decimal(str(reservation.meal_plan_price or 0))
+    if amount <= 0 or reservation.meal_plan == MealPlan.ROOM_ONLY.value:
+        return None
+    folio = _get_or_create_folio(db, reservation)
+    item = FolioItem(
+        folio_id=folio.id,
+        type=FolioItemType.MEAL.value,
+        description=f"Pensió {night.date.isoformat()}",
+        quantity=1,
+        unit_price=amount,
+        tax_rate=Decimal("0.00"),
+        amount=amount,
+    )
+    db.add(item)
+    folio.total_amount = (folio.total_amount or Decimal("0")) + amount
+    folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+
+    journal_meal(
+        db,
+        property_id=reservation.property_id,
+        folio_id=folio.id,
+        amount=amount,
+        entry_date=night.date,
+        prepaid=prepaid,
+        night_audit_id=night_audit_id,
+    )
     return item
 
 
@@ -118,6 +184,11 @@ def run_night_audit(
     db.add(audit)
     db.flush()
 
+    # Mode de facturació global de la propietat (prepaid/postpaid). És
+    # uniforme per a totes les reserves i es fixa a l'inici de temporada.
+    prop = db.get(Property, property_id)
+    prepaid = (prop.billing_mode == BillingMode.PREPAID.value) if prop else True
+
     summary: dict = {
         "audit_date": audit_date.isoformat(),
         "rooms_total": 0,
@@ -128,6 +199,7 @@ def run_night_audit(
         "no_shows": 0,
         "nights_posted": 0,
         "room_revenue": "0",
+        "meal_revenue": "0",
         "other_revenue": "0",
         "total_revenue": "0",
         "folios_closed": 0,
@@ -161,6 +233,7 @@ def run_night_audit(
         # --- 1. Postar la nit d'avui a cada estada en curs ---
         nights_posted = 0
         room_revenue = Decimal("0")
+        meal_revenue = Decimal("0")
         for res in in_house:
             night = (
                 db.query(ReservationNight)
@@ -173,11 +246,15 @@ def run_night_audit(
             if night is None:
                 # No hi ha nit registrada per a aquesta data: res a postar.
                 continue
-            _post_room_night(db, res, night)
+            _post_room_night(db, res, night, prepaid, night_audit_id=audit.id)
+            meal_item = _post_meal(db, res, night, prepaid, night_audit_id=audit.id)
             nights_posted += 1
             room_revenue += Decimal(str(night.amount or 0))
+            if meal_item is not None:
+                meal_revenue += Decimal(str(meal_item.amount or 0))
         summary["nights_posted"] = nights_posted
         summary["room_revenue"] = str(room_revenue)
+        summary["meal_revenue"] = str(meal_revenue)
 
         # --- 2. Check-out automàtic de les reserves que surten avui ---
         departures = (
@@ -300,7 +377,7 @@ def run_night_audit(
 
         # --- 7. Revenue total (nits + extres) ---
         summary["other_revenue"] = str(extras_revenue)
-        summary["total_revenue"] = str(room_revenue + extras_revenue)
+        summary["total_revenue"] = str(room_revenue + meal_revenue + extras_revenue)
 
         audit.summary = summary
         audit.status = "completed"

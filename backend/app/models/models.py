@@ -1,4 +1,5 @@
 import uuid
+import builtins
 import enum
 from datetime import datetime, date
 from decimal import Decimal
@@ -57,6 +58,7 @@ class FolioStatus(str, enum.Enum):
 
 class FolioItemType(str, enum.Enum):
     ROOM_NIGHT = "room_night"
+    MEAL = "meal"              # pensió (mitja pensió, pensió completa...)
     PRODUCT = "product"
     SERVICE = "service"
     TAX = "tax"
@@ -91,6 +93,64 @@ class MaintenanceStatus(str, enum.Enum):
     EN_ESPERA_PECA = "en_espera_peca"
     RESOLT = "resolt"
     CANCELAT = "cancelat"
+
+class CreditLineType(str, enum.Enum):
+    FULL = "full"          # extres il·limitats al foli
+    LIMITED = "limited"    # crèdit limitat fins a un import
+    NONE = "none"          # sense crèdit: extres mai al foli
+
+class BillingMode(str, enum.Enum):
+    PREPAID = "prepaid"    # factura a l'entrada: bestreta total, foli acreedor que minva
+    POSTPAID = "postpaid"  # factura a la sortida: foli deutor que s'acumula i es cancel·la
+
+class MealPlan(str, enum.Enum):
+    ROOM_ONLY = "room_only"
+    BED_BREAKFAST = "bed_breakfast"
+    HALF_BOARD = "half_board"
+    FULL_BOARD = "full_board"
+    ALL_INCLUSIVE = "all_inclusive"
+
+class FolioTarget(str, enum.Enum):
+    GUEST = "guest"        # foli del client (extres, ecotaxa)
+    AGENCY = "agency"      # foli del TO/agència (habitació)
+    MASTER = "master"      # compte centralitzat (empresa/master)
+    HOUSE = "house"        # compte de la casa (cortesia, ajustos)
+
+class PaymentType(str, enum.Enum):
+    DEPOSIT = "deposit"        # dipòsit/bestreta a l'entrada
+    ADVANCE = "advance"        # pagament anticipat de l'estada
+    SETTLEMENT = "settlement"  # liquidació del saldo (sortida)
+    REFUND = "refund"          # devolució
+
+class AccountCode(str, enum.Enum):
+    CASH = "cash"                                 # Banc/Caixa/TPV
+    ACCOUNTS_RECEIVABLE = "accounts_receivable"     # Comptes a cobrar (client/TO)
+    ADVANCE_CUSTOMERS = "advance_customers"         # Bestreta de clients (passiu)
+    DEPOSIT_RECEIVED = "deposit_received"           # Dipòsits de reserves (passiu)
+    ROOM_REVENUE = "room_revenue"                   # Ingressos allotjament
+    MEAL_REVENUE = "meal_revenue"                   # Ingressos pensió/restauració
+    EXTRA_REVENUE = "extra_revenue"                 # Ingressos extres
+    VAT_PAYABLE = "vat_payable"                     # IVA repercutit (passiu)
+    TAX_PAYABLE = "tax_payable"                     # Taxa turística (passiu)
+    COMMISSION_EXPENSE = "commission_expense"       # Despesa comissió agència
+
+class JournalEntryType(str, enum.Enum):
+    ADVANCE = "advance"              # bestreta rebuda
+    ROOM_REVENUE = "room_revenue"    # ingrés allotjament (night audit)
+    MEAL_REVENUE = "meal_revenue"    # ingrés pensió (night audit)
+    EXTRA_REVENUE = "extra_revenue"  # ingrés d'extres
+    TAX_COLLECTED = "tax_collected"  # taxa (passiu)
+    PAYMENT = "payment"              # cobrament
+    INVOICE = "invoice"              # factura emesa
+    ADJUSTMENT = "adjustment"        # ajust/regularització
+
+class JournalEntrySource(str, enum.Enum):
+    NIGHT_AUDIT = "night_audit"
+    RESERVATION = "reservation"
+    CHECKIN = "checkin"
+    CHECKOUT = "checkout"
+    POS = "pos"
+    MANUAL = "manual"
 
 class IntegrationType(str, enum.Enum):
     PAYMENTS = "payments"
@@ -150,6 +210,7 @@ class Property(Base):
     code = Column(String, nullable=False)
     timezone = Column(String, default="Europe/Madrid")
     currency = Column(String, default="EUR")
+    billing_mode = Column(String, default=BillingMode.PREPAID.value)  # prepaid | postpaid — global per a totes les reserves (es fixa a l'inici de temporada)
     address = Column(JSON)
     active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -199,6 +260,7 @@ class Room(Base):
     room_type_id = Column(UUID(as_uuid=True), ForeignKey("room_types.id", ondelete="CASCADE"), nullable=False)
     number = Column(String, nullable=False)
     floor = Column(String)
+    features = Column(JSON)
     status = Column(String, default=RoomStatus.CLEAN.value)
     active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -317,6 +379,11 @@ class Reservation(Base):
     status = Column(String, default=ReservationStatus.CONFIRMED.value)
     source = Column(String, default=ReservationSource.DIRECT_WEB.value)
     agency_code = Column(String)  # codi del contracte d'agència (Yield & Allotment), opcional
+    credit_type = Column(String, default=CreditLineType.FULL.value)  # full | limited | none
+    credit_limit = Column(Numeric(12, 2))  # límit de crèdit quan credit_type == limited
+    meal_plan = Column(String, default=MealPlan.ROOM_ONLY.value)  # room_only | bed_breakfast | half_board | full_board | all_inclusive
+    meal_plan_price = Column(Numeric(12, 2), default=0)  # preu diari de la pensió (0 = sense pensió)
+    deposit_amount = Column(Numeric(12, 2), default=0)  # dipòsit pagat al moment de la reserva
     check_in = Column(Date, nullable=False)
     check_out = Column(Date, nullable=False)
     adults = Column(Integer, default=2)
@@ -334,7 +401,21 @@ class Reservation(Base):
     rate_plan = relationship("RatePlan", back_populates="reservations")
     assigned_room = relationship("Room", back_populates="reservations")
     nights = relationship("ReservationNight", back_populates="reservation", cascade="all, delete-orphan")
-    folio = relationship("Folio", back_populates="reservation", uselist=False, passive_deletes=True)
+    folios = relationship("Folio", back_populates="reservation", cascade="all, delete-orphan", passive_deletes=True)
+
+    @builtins.property
+    def folio(self):
+        """Foli principal de la reserva (el del client).
+
+        Amb routing TO/agència hi pot haver més d'un foli (`folios`): el de
+        l'agència (habitació) i el del client (extres+ecotaxa). Retorna el
+        foli `guest`, o el primer si no n'hi ha cap de `guest`. Mantingut per
+        compatibilitat amb el codi que usava una relació `folio` única.
+        """
+        for f in self.folios:
+            if f.folio_target == FolioTarget.GUEST.value:
+                return f
+        return self.folios[0] if self.folios else None
 
     __table_args__ = (
         Index("ix_res_prop_code", "property_id", "confirmation_code", unique=True),
@@ -372,6 +453,7 @@ class Folio(Base):
     reservation_id = Column(UUID(as_uuid=True), ForeignKey("reservations.id", ondelete="SET NULL"))
     guest_id = Column(UUID(as_uuid=True), ForeignKey("guests.id", ondelete="SET NULL"))
     kind = Column(String, default="reservation")
+    folio_target = Column(String, default=FolioTarget.GUEST.value)  # guest | agency | master | house
     status = Column(String, default=FolioStatus.OPEN.value)
     currency = Column(String, default="EUR")
     total_amount = Column(Numeric(12, 2), default=0)
@@ -382,10 +464,11 @@ class Folio(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     property = relationship("Property", back_populates="folios")
-    reservation = relationship("Reservation", back_populates="folio")
+    reservation = relationship("Reservation", back_populates="folios")
     guest = relationship("Guest")
     items = relationship("FolioItem", back_populates="folio", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="folio", cascade="all, delete-orphan")
+    journal_entries = relationship("JournalEntry", back_populates="folio")
 
     __table_args__ = (
         Index("ix_folios_prop_status", "property_id", "status"),
@@ -405,6 +488,7 @@ class FolioItem(Base):
     tax_rate = Column(Numeric(6, 3), default=0)
     amount = Column(Numeric(12, 2), nullable=False)
     external_id = Column(String)  # idempotencia (cargos POS de Comanda)
+    account_code = Column(String)  # AccountCode — classificació comptable (ingrés/passiu)
     posted_at = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -422,6 +506,7 @@ class Payment(Base):
     folio_id = Column(UUID(as_uuid=True), ForeignKey("folios.id", ondelete="CASCADE"), nullable=False)
     provider = Column(String, nullable=False)
     method = Column(String)
+    payment_type = Column(String, default=PaymentType.SETTLEMENT.value)  # deposit | advance | settlement | refund
     status = Column(String, default=PaymentStatus.PENDING.value)
     amount = Column(Numeric(12, 2), nullable=False)
     currency = Column(String, default="EUR")
@@ -627,6 +712,7 @@ class NightAudit(Base):
 
     property = relationship("Property")
     created_by = relationship("User", foreign_keys=[created_by_id])
+    journal_entries = relationship("JournalEntry", back_populates="night_audit")
 
     __table_args__ = (
         Index("ix_night_audit_prop_date", "property_id", "audit_date", unique=True),
@@ -694,3 +780,53 @@ class ContractAllotment(Base):
         Index("ix_contract_allot_rt_date", "room_type_id", "date"),
         Index("ix_contract_allot_contract_rt_date", "contract_id", "room_type_id", "date", unique=True),
     )
+
+
+class JournalEntry(Base):
+    """Assentament comptable (moviment de tancament cap a Compta).
+
+    Cada transacció del circuit del foli (bestreta, nit merita, extra,
+    factura, cobrament...) genera un `JournalEntry` amb línies de partida
+    doble (`JournalEntryLine`: Deure/Haver). Aquests assentaments són els
+    «tancaments» que Estada i Comanda emeten cap al hub **Compta**, que els
+    consolida i exporta (SAGE/A3). Idempotent per `external_id`.
+    """
+    __tablename__ = "journal_entries"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    source = Column(String, nullable=False)            # JournalEntrySource
+    source_id = Column(UUID(as_uuid=True))             # id de la font (NightAudit.id, Folio.id...)
+    folio_id = Column(UUID(as_uuid=True), ForeignKey("folios.id", ondelete="SET NULL"))
+    night_audit_id = Column(UUID(as_uuid=True), ForeignKey("night_audits.id", ondelete="SET NULL"))
+    entry_type = Column(String, nullable=False)        # JournalEntryType
+    entry_date = Column(Date, nullable=False)
+    description = Column(String)
+    external_id = Column(String)                       # idempotència cap a Compta
+    status = Column(String, default="pending")         # pending | emitted | failed
+    emitted_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    property = relationship("Property")
+    folio = relationship("Folio", back_populates="journal_entries")
+    night_audit = relationship("NightAudit", back_populates="journal_entries")
+    lines = relationship("JournalEntryLine", back_populates="entry", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_je_prop_date", "property_id", "entry_date"),
+        Index("ix_je_external", "external_id", unique=True),
+    )
+
+
+class JournalEntryLine(Base):
+    """Línia d'un assentament (partida doble): compte + import al Deure o Haver."""
+    __tablename__ = "journal_entry_lines"
+    id = uuid_pk()
+    entry_id = Column(UUID(as_uuid=True), ForeignKey("journal_entries.id", ondelete="CASCADE"), nullable=False)
+    account_code = Column(String, nullable=False)      # AccountCode
+    debit = Column(Numeric(12, 2), default=0)
+    credit = Column(Numeric(12, 2), default=0)
+    description = Column(String)
+
+    entry = relationship("JournalEntry", back_populates="lines")
+
+    __table_args__ = (Index("ix_jel_entry", "entry_id"),)

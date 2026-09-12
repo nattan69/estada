@@ -49,6 +49,7 @@ class PropertyBase(BaseModel):
     code: str
     timezone: str = "Europe/Madrid"
     currency: str = "EUR"
+    billing_mode: str = "prepaid"
     address: Optional[dict] = None
     active: bool = True
 
@@ -60,6 +61,7 @@ class PropertyUpdate(BaseModel):
     code: Optional[str] = None
     timezone: Optional[str] = None
     currency: Optional[str] = None
+    billing_mode: Optional[str] = None
     address: Optional[dict] = None
     active: Optional[bool] = None
 
@@ -108,6 +110,7 @@ class RoomBase(BaseModel):
     room_type_id: UUID
     number: str
     floor: Optional[str] = None
+    features: Optional[list] = None
     status: str = "clean"
     active: bool = True
 
@@ -117,6 +120,7 @@ class RoomCreate(RoomBase):
 class RoomUpdate(BaseModel):
     number: Optional[str] = None
     floor: Optional[str] = None
+    features: Optional[list] = None
     status: Optional[str] = None
     active: Optional[bool] = None
 
@@ -250,6 +254,11 @@ class ReservationBase(BaseModel):
     status: str = "confirmed"
     source: str = "direct_web"
     agency_code: Optional[str] = None
+    credit_type: str = "full"
+    credit_limit: Optional[Decimal] = None
+    meal_plan: str = "room_only"
+    meal_plan_price: Decimal = Decimal("0.00")
+    deposit_amount: Decimal = Decimal("0.00")
     check_in: date
     check_out: date
     adults: int = 2
@@ -270,6 +279,11 @@ class ReservationUpdate(BaseModel):
     check_in: Optional[date] = None
     check_out: Optional[date] = None
     agency_code: Optional[str] = None
+    credit_type: Optional[str] = None
+    credit_limit: Optional[Decimal] = None
+    meal_plan: Optional[str] = None
+    meal_plan_price: Optional[Decimal] = None
+    deposit_amount: Optional[Decimal] = None
     adults: Optional[int] = None
     children: Optional[int] = None
     total_amount: Optional[Decimal] = None
@@ -306,6 +320,7 @@ class FolioOut(BaseModel):
     reservation_id: Optional[UUID] = None
     guest_id: Optional[UUID] = None
     kind: str
+    folio_target: str = "guest"
     status: str
     currency: str = "EUR"
     total_amount: Decimal
@@ -326,6 +341,7 @@ class FolioItemOut(BaseModel):
     tax_rate: Decimal
     amount: Decimal
     external_id: Optional[str] = None
+    account_code: Optional[str] = None
     posted_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
@@ -336,6 +352,7 @@ class ChargeCreate(BaseModel):
     quantity: int = 1
     unit_price: Decimal
     tax_rate: Decimal = Decimal("0.00")
+    account_code: Optional[str] = None
 
 class DiscountCreate(BaseModel):
     folio_id: UUID
@@ -349,6 +366,7 @@ class PaymentCreate(BaseModel):
     folio_id: UUID
     provider: str
     method: Optional[str] = None
+    payment_type: str = "settlement"
     amount: Decimal
     currency: str = "EUR"
     external_ref: Optional[str] = None
@@ -360,6 +378,7 @@ class PaymentOut(BaseModel):
     folio_id: UUID
     provider: str
     method: Optional[str] = None
+    payment_type: str = "settlement"
     status: str
     amount: Decimal
     currency: str = "EUR"
@@ -753,3 +772,34 @@ class ContractAuditResult(BaseModel):
     contracted_rate: Optional[Decimal] = None
     applied_rate: Optional[Decimal] = None
     release_date: Optional[date] = None
+
+
+# ============================================================
+# JOURNAL ENTRIES (assentaments comptables → Compta)
+# ============================================================
+class JournalEntryLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    entry_id: UUID
+    account_code: str
+    debit: Decimal = Decimal("0")
+    credit: Decimal = Decimal("0")
+    description: Optional[str] = None
+
+
+class JournalEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    property_id: UUID
+    source: str
+    source_id: Optional[UUID] = None
+    folio_id: Optional[UUID] = None
+    night_audit_id: Optional[UUID] = None
+    entry_type: str
+    entry_date: date
+    description: Optional[str] = None
+    external_id: Optional[str] = None
+    status: str
+    emitted_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    lines: List[JournalEntryLineOut] = []
