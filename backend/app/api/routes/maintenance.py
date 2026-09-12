@@ -5,12 +5,13 @@ from uuid import UUID
 from datetime import datetime
 
 from ...database import get_db
-from ...models.models import MaintenanceTask, Room, RoomStatus
+from ...models.models import MaintenanceTask, Room, RoomStatus, User
 from ...schemas.schemas import (
     MaintenanceTaskOut,
     MaintenanceTaskCreate,
     MaintenanceTaskUpdate,
 )
+from ...services.security import require_roles
 
 router = APIRouter()
 
@@ -46,6 +47,7 @@ def list_tasks(
     roomId: Optional[UUID] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
 ):
     query = db.query(MaintenanceTask)
     if propertyId:
@@ -58,7 +60,7 @@ def list_tasks(
 
 
 @router.post("", response_model=MaintenanceTaskOut, status_code=status.HTTP_201_CREATED)
-def create_task(payload: MaintenanceTaskCreate, db: Session = Depends(get_db)):
+def create_task(payload: MaintenanceTaskCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     task = MaintenanceTask(**payload.model_dump())
     db.add(task)
     db.flush()
@@ -69,7 +71,7 @@ def create_task(payload: MaintenanceTaskCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{task_id}", response_model=MaintenanceTaskOut)
-def update_task(task_id: UUID, payload: MaintenanceTaskUpdate, db: Session = Depends(get_db)):
+def update_task(task_id: UUID, payload: MaintenanceTaskUpdate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     task = db.get(MaintenanceTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Part de manteniment no trobat")
@@ -89,7 +91,7 @@ def update_task(task_id: UUID, payload: MaintenanceTaskUpdate, db: Session = Dep
 
 
 @router.post("/{task_id}/resolve", response_model=MaintenanceTaskOut)
-def resolve_task(task_id: UUID, db: Session = Depends(get_db)):
+def resolve_task(task_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     task = db.get(MaintenanceTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Part de manteniment no trobat")

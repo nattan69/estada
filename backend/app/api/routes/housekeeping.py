@@ -5,12 +5,13 @@ from uuid import UUID
 from datetime import datetime
 
 from ...database import get_db
-from ...models.models import HousekeepingTask
+from ...models.models import HousekeepingTask, User
 from ...schemas.schemas import (
     HousekeepingTaskOut, 
     HousekeepingTaskCreate, 
     HousekeepingTaskUpdate
 )
+from ...services.security import require_roles
 
 router = APIRouter()
 
@@ -18,7 +19,8 @@ router = APIRouter()
 def list_tasks(
     propertyId: Optional[UUID] = None, 
     status: Optional[str] = None, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception", "housekeeping")),
 ):
     query = db.query(HousekeepingTask)
     if propertyId:
@@ -28,7 +30,7 @@ def list_tasks(
     return query.all()
 
 @router.post("", response_model=HousekeepingTaskOut, status_code=status.HTTP_201_CREATED)
-def create_task(payload: HousekeepingTaskCreate, db: Session = Depends(get_db)):
+def create_task(payload: HousekeepingTaskCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     task = HousekeepingTask(**payload.model_dump())
     db.add(task)
     db.commit()
@@ -36,7 +38,7 @@ def create_task(payload: HousekeepingTaskCreate, db: Session = Depends(get_db)):
     return task
 
 @router.patch("/{task_id}", response_model=HousekeepingTaskOut)
-def update_task(task_id: UUID, payload: HousekeepingTaskUpdate, db: Session = Depends(get_db)):
+def update_task(task_id: UUID, payload: HousekeepingTaskUpdate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception", "housekeeping"))):
     task = db.get(HousekeepingTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Tasca no encontrada")
@@ -49,7 +51,7 @@ def update_task(task_id: UUID, payload: HousekeepingTaskUpdate, db: Session = De
     return task
 
 @router.post("/{task_id}/complete")
-def complete_task(task_id: UUID, db: Session = Depends(get_db)):
+def complete_task(task_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception", "housekeeping"))):
     task = db.get(HousekeepingTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Tasca no encontrada")

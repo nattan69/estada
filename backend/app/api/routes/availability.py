@@ -4,7 +4,9 @@ from typing import List, Optional
 from datetime import date
 from ...database import get_db
 from ...schemas.schemas import AvailabilityResponse, AvailabilityRequest
+from ...models.models import User
 from ...services.availability_service import search_availability
+from ...services.security import require_roles
 
 router = APIRouter()
 
@@ -16,7 +18,8 @@ def get_availability(
     adults: int = Query(...),
     children: int = Query(0),
     ratePlanId: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
 ):
     try:
         results = search_availability(

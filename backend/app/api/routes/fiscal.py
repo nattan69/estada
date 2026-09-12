@@ -5,9 +5,10 @@ from uuid import UUID
 from datetime import date, datetime
 
 from ...database import get_db
-from ...models.models import FiscalRecord
+from ...models.models import FiscalRecord, User
 from ...schemas.schemas import FiscalRecordOut, InvoiceCreate
 from ...services import fiscal_service
+from ...services.security import require_roles
 
 router = APIRouter()
 
@@ -16,7 +17,8 @@ def list_fiscal_records(
     propertyId: Optional[UUID] = None, 
     from_date: Optional[date] = Query(None, alias="from"), 
     to_date: Optional[date] = Query(None, alias="to"), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception", "accounting")),
 ):
     query = db.query(FiscalRecord)
     if propertyId:
@@ -28,18 +30,18 @@ def list_fiscal_records(
     return query.all()
 
 @router.get("/records/{record_id}", response_model=FiscalRecordOut)
-def get_fiscal_record(record_id: UUID, db: Session = Depends(get_db)):
+def get_fiscal_record(record_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception", "accounting"))):
     record = db.get(FiscalRecord, record_id)
     if not record:
         raise HTTPException(status_code=404, detail="Registre fiscal no trobat")
     return record
 
 @router.get("/chain/verify")
-def verify_fiscal_chain(propertyId: UUID, db: Session = Depends(get_db)):
+def verify_fiscal_chain(propertyId: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "accounting"))):
     return fiscal_service.verify_chain(db, propertyId)
 
 @router.post("/invoices", response_model=FiscalRecordOut, status_code=status.HTTP_201_CREATED)
-def issue_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
+def issue_invoice(payload: InvoiceCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     try:
         return fiscal_service.create_fiscal_record(db, payload.folio_id, payload.property_id)
     except ValueError as e:

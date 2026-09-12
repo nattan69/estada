@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from ...database import get_db
-from ...models.models import Inventory
+from ...models.models import Inventory, User
 from ...schemas.schemas import InventoryBulkUpsert, InventoryEntry
+from ...services.security import require_roles
 
 router = APIRouter()
 
 @router.post("/bulk-upsert")
-def bulk_upsert_inventory(payload: InventoryBulkUpsert, db: Session = Depends(get_db)):
+def bulk_upsert_inventory(payload: InventoryBulkUpsert, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager"))):
     upserted = 0
     for entry in payload.inventory:
         inventory = db.query(Inventory).filter(

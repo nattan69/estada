@@ -3,13 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 from ...database import get_db
-from ...models.models import Rate
+from ...models.models import Rate, User
 from ...schemas.schemas import RateBulkUpsert, RateOut, RateEntry
+from ...services.security import require_roles
 
 router = APIRouter()
 
 @router.post("/bulk-upsert")
-def bulk_upsert_rates(payload: RateBulkUpsert, db: Session = Depends(get_db)):
+def bulk_upsert_rates(payload: RateBulkUpsert, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager"))):
     upserted = 0
     for entry in payload.rates:
         rate = db.query(Rate).filter(
@@ -48,7 +49,8 @@ def get_rates(
     from_date: Optional[date] = Query(None, alias="from"),
     to_date: Optional[date] = Query(None, alias="to"),
     ratePlanId: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
 ):
     query = db.query(Rate)
     if roomTypeId:

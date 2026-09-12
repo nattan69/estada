@@ -6,14 +6,15 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from ...database import get_db
-from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room
+from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room, User
 from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse, FolioOut
 from ...services.availability_service import search_availability
+from ...services.security import require_roles
 
 router = APIRouter()
 
 @router.post("/quote", response_model=List[QuoteResponse])
-def get_quote(payload: QuoteRequest, db: Session = Depends(get_db)):
+def get_quote(payload: QuoteRequest, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     try:
         results = search_availability(
             db=db,
@@ -33,7 +34,8 @@ def list_reservations(
     propertyId: Optional[UUID] = None,
     date: Optional[date] = None,
     status: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
 ):
     query = db.query(Reservation)
     if propertyId:
@@ -45,7 +47,7 @@ def list_reservations(
     return query.all()
 
 @router.post("", response_model=ReservationOut, status_code=status.HTTP_201_CREATED)
-def create_reservation(payload: ReservationCreate, db: Session = Depends(get_db)):
+def create_reservation(payload: ReservationCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = Reservation(**payload.model_dump())
     if not res.confirmation_code:
         res.confirmation_code = f"CONF-{uuid4().hex[:8].upper()}"
@@ -87,14 +89,14 @@ def create_reservation(payload: ReservationCreate, db: Session = Depends(get_db)
     return res
 
 @router.get("/{reservation_id}", response_model=ReservationOut)
-def get_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
+def get_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     return res
 
 @router.get("/{reservation_id}/folio", response_model=FolioOut)
-def get_reservation_folio(reservation_id: UUID, db: Session = Depends(get_db)):
+def get_reservation_folio(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception", "housekeeping"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -103,7 +105,7 @@ def get_reservation_folio(reservation_id: UUID, db: Session = Depends(get_db)):
     return res.folio
 
 @router.patch("/{reservation_id}", response_model=ReservationOut)
-def update_reservation(reservation_id: UUID, payload: ReservationUpdate, db: Session = Depends(get_db)):
+def update_reservation(reservation_id: UUID, payload: ReservationUpdate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -116,7 +118,7 @@ def update_reservation(reservation_id: UUID, payload: ReservationUpdate, db: Ses
     return res
 
 @router.post("/{reservation_id}/cancel")
-def cancel_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
+def cancel_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -127,7 +129,7 @@ def cancel_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
     return {"message": "Reserva cancelada"}
 
 @router.post("/{reservation_id}/check-in")
-def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
+def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -172,7 +174,7 @@ def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
     return {"message": "Check-in realizado", "folio_id": str(folio.id)}
 
 @router.post("/{reservation_id}/check-out")
-def check_out_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
+def check_out_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -195,7 +197,7 @@ def check_out_reservation(reservation_id: UUID, db: Session = Depends(get_db)):
     return {"message": "Check-out realizado"}
 
 @router.post("/{reservation_id}/assign-room")
-def assign_room(reservation_id: UUID, payload: dict, db: Session = Depends(get_db)):
+def assign_room(reservation_id: UUID, payload: dict, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -216,7 +218,7 @@ def assign_room(reservation_id: UUID, payload: dict, db: Session = Depends(get_d
     return {"message": "Habitación asignada"}
 
 @router.post("/{reservation_id}/change-room")
-def change_room(reservation_id: UUID, payload: dict, db: Session = Depends(get_db)):
+def change_room(reservation_id: UUID, payload: dict, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")

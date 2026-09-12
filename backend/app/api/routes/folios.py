@@ -6,9 +6,10 @@ from datetime import datetime
 from decimal import Decimal
 
 from ...database import get_db
-from ...models.models import Folio, FolioItem, Payment, PaymentType
+from ...models.models import Folio, FolioItem, Payment, PaymentType, User
 from ...schemas.schemas import FolioOut, ChargeCreate, DiscountCreate, PaymentCreate, RefundCreate, FolioItemOut, PaymentOut
 from ...services.journal_service import journal_payment
+from ...services.security import require_roles
 
 router = APIRouter()
 
@@ -17,21 +18,21 @@ def _assert_open(folio: Folio):
         raise HTTPException(status_code=400, detail="El folio está cerrado")
 
 @router.get("/{folio_id}", response_model=FolioOut)
-def get_folio(folio_id: UUID, db: Session = Depends(get_db)):
+def get_folio(folio_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
     return folio
 
 @router.get("/{folio_id}/items", response_model=List[FolioItemOut])
-def list_folio_items(folio_id: UUID, db: Session = Depends(get_db)):
+def list_folio_items(folio_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
     return folio.items
 
 @router.post("/{folio_id}/charges", response_model=FolioItemOut)
-def add_charge(folio_id: UUID, payload: ChargeCreate, db: Session = Depends(get_db)):
+def add_charge(folio_id: UUID, payload: ChargeCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
@@ -58,7 +59,7 @@ def add_charge(folio_id: UUID, payload: ChargeCreate, db: Session = Depends(get_
     return item
 
 @router.post("/{folio_id}/discounts", response_model=FolioItemOut)
-def add_discount(folio_id: UUID, payload: DiscountCreate, db: Session = Depends(get_db)):
+def add_discount(folio_id: UUID, payload: DiscountCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
@@ -83,7 +84,7 @@ def add_discount(folio_id: UUID, payload: DiscountCreate, db: Session = Depends(
     return item
 
 @router.post("/{folio_id}/payments", response_model=PaymentOut)
-def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(get_db)):
+def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
@@ -130,7 +131,7 @@ def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(ge
     return payment
 
 @router.post("/{folio_id}/refunds", response_model=PaymentOut)
-def add_refund(folio_id: UUID, payload: RefundCreate, db: Session = Depends(get_db)):
+def add_refund(folio_id: UUID, payload: RefundCreate, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")
@@ -155,7 +156,7 @@ def add_refund(folio_id: UUID, payload: RefundCreate, db: Session = Depends(get_
     return payment
 
 @router.post("/{folio_id}/close", response_model=FolioOut)
-def close_folio(folio_id: UUID, db: Session = Depends(get_db)):
+def close_folio(folio_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     folio = db.get(Folio, folio_id)
     if not folio:
         raise HTTPException(status_code=404, detail="Folio no encontrado")

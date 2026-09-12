@@ -7,8 +7,9 @@ from datetime import date
 from decimal import Decimal
 
 from ...database import get_db
-from ...models.models import Reservation, ReservationNight, Folio, FolioItem, Room
+from ...models.models import Reservation, ReservationNight, Folio, FolioItem, Room, User
 from ...schemas.schemas import ReservationOut
+from ...services.security import require_roles
 
 router = APIRouter()
 
@@ -17,7 +18,8 @@ def get_occupancy(
     propertyId: UUID, 
     from_date: date = Query(..., alias="from"), 
     to_date: date = Query(..., alias="to"), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception", "accounting")),
 ):
     # Compta ReservationNight amb status de la reserva != "canceled" entre les dates
     nights_sold = db.query(ReservationNight).join(Reservation).filter(
@@ -46,7 +48,8 @@ def get_revenue(
     propertyId: UUID, 
     from_date: date = Query(..., alias="from"), 
     to_date: date = Query(..., alias="to"), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception", "accounting")),
 ):
     # Suma FolioItem.amount (type="charge") dels folios de la propietat entre les dates
     revenue = db.query(func.coalesce(func.sum(FolioItem.amount), 0)).join(Folio).filter(
@@ -68,7 +71,8 @@ def get_adr(
     propertyId: UUID, 
     from_date: date = Query(..., alias="from"), 
     to_date: date = Query(..., alias="to"), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception", "accounting")),
 ):
     # revenue / nº nits venudes
     revenue_res = get_revenue(propertyId, from_date, to_date, db)
@@ -95,7 +99,8 @@ def get_revpar(
     propertyId: UUID, 
     from_date: date = Query(..., alias="from"), 
     to_date: date = Query(..., alias="to"), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception", "accounting")),
 ):
     # revenue / (nº habitacions * nº nits)
     revenue_res = get_revenue(propertyId, from_date, to_date, db)
@@ -117,7 +122,8 @@ def get_revpar(
 @router.get("/front-desk/arrivals", response_model=List[ReservationOut])
 def get_arrivals(
     date_param: Optional[date] = Query(None, alias="date"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
 ):
     target = date_param or date.today()
     return db.query(Reservation).filter(
@@ -128,7 +134,8 @@ def get_arrivals(
 @router.get("/front-desk/departures", response_model=List[ReservationOut])
 def get_departures(
     date_param: Optional[date] = Query(None, alias="date"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
 ):
     target = date_param or date.today()
     return db.query(Reservation).filter(
