@@ -61,15 +61,19 @@ def _entry_payload(
     entry_type: str,
     concept: str,
     lines: list[dict],
+    status: Optional[str] = None,
 ) -> dict:
     """Construeix el payload d'intake per a Compta (contracte acordat)."""
-    return {
+    payload = {
         "external_id": external_id,
         "date": date_str,
         "type": entry_type,       # 'FOLIO' | 'CIERRE'
         "concept": concept,
         "lines": lines,
     }
+    if status:
+        payload["status"] = status
+    return payload
 
 
 def lines_from_journal_entry(entry) -> list[dict]:
@@ -180,6 +184,7 @@ def envia_cierre_a_compta(
         entry_type="CIERRE",
         concept=concept,
         lines=lines,
+        status="CONTROL",
     )
     return _post(url, key, payload)
 
