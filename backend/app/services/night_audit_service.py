@@ -416,6 +416,23 @@ def run_night_audit(
         audit.completed_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(audit)
+
+        # Emetre el tancament de caixa diari (CIERRE) a Compta. Idempotent per
+        # external_id; si Compta no està disponible, no trenca el night audit.
+        try:
+            from .compta_client import envia_cierre_a_compta
+            res = envia_cierre_a_compta(
+                property_id=str(property_id),
+                audit_date_str=audit_date.isoformat(),
+                external_id=f"estada-cierre-{audit.id}",
+                concept=f"Tancament de caixa {audit_date.isoformat()}",
+                payments_by_method=summary.get("payments_by_method", {}),
+            )
+            if not res.get("ok"):
+                logger.warning(f"[COMPTA] no s'ha pogut emetre el cierre {audit.id}: {res}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[COMPTA] error emetent cierre {audit.id}: {e}")
+
         return audit
 
     except Exception as exc:  # noqa: BLE001 — volem registrar el fracàs i rellançar

@@ -4,12 +4,15 @@ from typing import List
 from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
+import logging
 
 from ...database import get_db
 from ...models.models import Folio, FolioItem, Payment, PaymentType, User
 from ...schemas.schemas import FolioOut, ChargeCreate, DiscountCreate, PaymentCreate, RefundCreate, FolioItemOut, PaymentOut
 from ...services.journal_service import journal_payment
 from ...services.security import require_roles
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -168,4 +171,15 @@ def close_folio(folio_id: UUID, db: Session = Depends(get_db), _: User = Depends
     folio.closed_at = datetime.now()
     db.commit()
     db.refresh(folio)
+
+    # Emetre els assentaments pendents del foli a Compta (intake, idempotent).
+    # Si Compta no està disponible, no trenca el tancament (error al log).
+    try:
+        from ...services.compta_client import emit_pending_folio_entries
+        res = emit_pending_folio_entries(db, folio)
+        if res.get("enviats") or res.get("errors"):
+            logger.info(f"[COMPTA] tancament foli {folio.id}: {res}")
+    except Exception as e:
+        logger.warning(f"[COMPTA] error emetent tancament del foli {folio.id}: {e}")
+
     return folio
