@@ -38,6 +38,7 @@ from ..models.models import (
     Folio,
     FolioItem,
     FolioItemType,
+    FolioTarget,
     MealPlan,
     NightAudit,
     Payment,
@@ -55,21 +56,37 @@ from .journal_service import journal_meal, journal_room_night
 logger = logging.getLogger(__name__)
 
 
-def _get_or_create_folio(db: Session, reservation: Reservation) -> Folio:
-    """Retorna el folio de la reserva, creant-lo si no existeix."""
-    folio = reservation.folio
-    if folio is None:
-        folio = Folio(
-            property_id=reservation.property_id,
-            reservation_id=reservation.id,
-            guest_id=reservation.guest_id,
-            kind="reservation",
-            status="open",
-            currency=reservation.currency or "EUR",
-        )
-        db.add(folio)
-        db.flush()
+def _get_or_create_folio(
+    db: Session,
+    reservation: Reservation,
+    target: str = FolioTarget.GUEST.value,
+) -> Folio:
+    """Retorna el foli de la reserva per a un `target`, creant-lo si no existeix.
+
+    Routing TO/agència: la producció d'habitació va al foli `agency` i els
+    extres/ecotaxa al foli `guest`. El cas directe (sense agència) usa el foli
+    `guest` per a tot.
+    """
+    for f in reservation.folios:
+        if f.folio_target == target:
+            return f
+    folio = Folio(
+        property_id=reservation.property_id,
+        reservation_id=reservation.id,
+        guest_id=reservation.guest_id,
+        kind="reservation",
+        folio_target=target,
+        status="open",
+        currency=reservation.currency or "EUR",
+    )
+    db.add(folio)
+    db.flush()
     return folio
+
+
+def _is_agency_reservation(reservation: Reservation) -> bool:
+    """Indica si la reserva ve d'un touroperador/agència (té `agency_code`)."""
+    return bool(getattr(reservation, "agency_code", None))
 
 
 def _post_room_night(
@@ -80,8 +97,16 @@ def _post_room_night(
     night_audit_id: UUID | None = None,
 ) -> FolioItem:
     """Posta la nit d'una reserva al seu folio com a `room_night` i genera
-    l'assentament comptable de reconeixement de l'ingrés."""
-    folio = _get_or_create_folio(db, reservation)
+    l'assentament comptable de reconeixement de l'ingrés.
+
+    Routing: si la reserva és d'agència/TO, l'habitació va al foli `agency`;
+    si no, al foli `guest`.
+    """
+    folio = _get_or_create_folio(
+        db,
+        reservation,
+        target=FolioTarget.AGENCY.value if _is_agency_reservation(reservation) else FolioTarget.GUEST.value,
+    )
     amount = Decimal(str(night.amount or 0))
     item = FolioItem(
         folio_id=folio.id,
@@ -121,11 +146,18 @@ def _post_meal(
     """Posta la pensió diària al foli i genera el seu assentament.
 
     Retorna `None` si la reserva no té pensió (room_only o preu 0).
+
+    Routing: la pensió és contractada pel TO (forma part del règim), així que
+    va al mateix foli que l'habitació (`agency` si és agència, `guest` si no).
     """
     amount = Decimal(str(reservation.meal_plan_price or 0))
     if amount <= 0 or reservation.meal_plan == MealPlan.ROOM_ONLY.value:
         return None
-    folio = _get_or_create_folio(db, reservation)
+    folio = _get_or_create_folio(
+        db,
+        reservation,
+        target=FolioTarget.AGENCY.value if _is_agency_reservation(reservation) else FolioTarget.GUEST.value,
+    )
     item = FolioItem(
         folio_id=folio.id,
         type=FolioItemType.MEAL.value,

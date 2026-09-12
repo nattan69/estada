@@ -11,6 +11,7 @@ from ...config import settings
 from ...models.models import (
     Reservation, Room, Folio, FolioItem, Payment, WebhookEvent,
     ReservationStatus, ReservationSource, FolioItemType, PaymentStatus,
+    CreditLineType, FolioTarget,
 )
 from ...schemas.schemas import (
     PosRoomChargeCreate, PosRoomChargeResponse,
@@ -18,6 +19,7 @@ from ...schemas.schemas import (
     VccChargeCreate, PaymentOut,
 )
 from ...services.outbox import publish
+from ...services.journal_service import journal_extra_posted
 
 router = APIRouter()
 
@@ -33,6 +35,31 @@ def _normalize(s: Optional[str]) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     return " ".join(s.lower().split())
+
+
+def _check_credit(reservation: Reservation, amount: Decimal) -> Optional[str]:
+    """Comprova la línia de crèdit de la reserva abans de carregar un extra.
+
+    Retorna un missatge d'error (string) si el càrrec NO està permès, o `None`
+    si es pot carregar. Regla (doc Mews → política de Tomeu):
+    - `none`: no s'hi carrega res (cobrament al moment o master).
+    - `limited`: es carrega fins al límit; si el foli ja el supera, es rebutja.
+    - `full`: es carrega sense límit.
+    """
+    credit_type = getattr(reservation, "credit_type", None) or CreditLineType.FULL.value
+    if credit_type == CreditLineType.NONE.value:
+        return "L'habitació no té crèdit: l'extra s'ha de cobrar al moment"
+    if credit_type == CreditLineType.LIMITED.value:
+        limit = Decimal(str(getattr(reservation, "credit_limit", None) or 0))
+        if limit > 0:
+            folio = reservation.folio
+            already = Decimal(str(folio.balance or 0)) if folio else Decimal("0")
+            if already + amount > limit:
+                return (
+                    f"Límit de crèdit superat (límit {limit}, pendent {already}, "
+                    f"càrrec {amount})"
+                )
+    return None
 
 
 def _require_api_key(x_api_key: Optional[str], expected: str, name: str) -> None:
@@ -122,14 +149,28 @@ def pos_room_charge(
                     ),
                 )
 
-    # 4. Obtener (o crear) el folio de la reserva.
-    folio = reservation.folio
+    # 3.5 Comprovar la línia de crèdit abans de carregar l'extra.
+    credit_error = _check_credit(reservation, Decimal(str(payload.amount)))
+    if credit_error:
+        return PosRoomChargeResponse(
+            success=False,
+            error="credit_denied",
+            message=credit_error,
+        )
+
+    # 4. Obtener (o crear) el folio de la reserva (els extres van al foli guest).
+    folio = None
+    for f in reservation.folios:
+        if f.folio_target == FolioTarget.GUEST.value:
+            folio = f
+            break
     if not folio:
         folio = Folio(
             property_id=reservation.property_id,
             reservation_id=reservation.id,
             guest_id=reservation.guest_id,
             kind="reservation",
+            folio_target=FolioTarget.GUEST.value,
             status="open",
             currency=reservation.currency or "EUR",
         )
@@ -164,6 +205,19 @@ def pos_room_charge(
 
     # 6. Recalcular folio.
     _recalc_folio(folio)
+
+    # 6.5 Assentament comptable de l'extra (D foli → H extra_revenue + IVA).
+    base = Decimal(str(payload.amount)) / (Decimal("1") + Decimal(str(tax_rate)))
+    tax = Decimal(str(payload.amount)) - base
+    journal_extra_posted(
+        db,
+        property_id=reservation.property_id,
+        folio_id=folio.id,
+        base_amount=base,
+        tax_amount=tax,
+        entry_date=(posted_at.date() if hasattr(posted_at, "date") else datetime.now().date()),
+        description=description,
+    )
 
     # 7. Publicar esdeveniment de domini (outbox) dins la mateixa transacció.
     publish(
