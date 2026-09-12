@@ -143,18 +143,34 @@ def envia_cierre_a_compta(
 ) -> dict:
     """Envia el tancament de caixa diari (night audit) a Compta com a CIERRE.
 
-    Un assentament per dia amb el desglossament de paganments per mètode
-    (cash → 570, card → 5730).
+    Un assentament EQUILIBRAT amb el desglossament de cobraments per mètode
+    (cash → 5700, card → 5730) i una contrapartida única al compte de
+    bestretes (4108), que reflecteix que els cobraments del dia en prepaid
+    són bestretes de clients. És un assentament de CONTROL de caixa (els
+    assentaments comptables reals van com a FOLIO).
     """
     url, key = _cfg()
     lines = []
+    total = Decimal("0")
     for method, amount in (payments_by_method or {}).items():
-        account = "570" if method in ("cash", "efectivo", "efectiu") else _map(method)
+        account = "5700" if method in ("cash", "efectivo", "efectiu") else _map(method)
+        amt = Decimal(str(amount or 0))
+        if amt <= 0:
+            continue
+        total += amt
         lines.append({
             "account": account,
-            "debit": str(amount),
+            "debit": str(amt),
             "credit": "0",
             "concept": f"Cobraments {method}",
+        })
+    # Contrapartida única per equilibrar (bestretes de clients, 4108).
+    if total > 0:
+        lines.append({
+            "account": "4108",
+            "debit": "0",
+            "credit": str(total),
+            "concept": "Bestretes rebudes (contrapartida de caixa)",
         })
     payload = _entry_payload(
         external_id=external_id,

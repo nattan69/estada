@@ -803,3 +803,104 @@ class JournalEntryOut(BaseModel):
     emitted_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     lines: List[JournalEntryLineOut] = []
+
+
+# ============================================================
+# SERVICE (serveis facturables amb IVA per servei)
+# ============================================================
+class ServiceBase(BaseModel):
+    code: str
+    name: str
+    category: Optional[str] = None
+    vat_rate: Decimal = Decimal("0.10")       # fracció: 0.10, 0.21, 0.04
+    revenue_account: Optional[str] = None       # AccountCode
+    active: bool = True
+
+
+class ServiceCreate(ServiceBase):
+    tenant_id: Optional[UUID] = None           # es deriva de l'usuari autenticat
+
+
+class ServiceUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    vat_rate: Optional[Decimal] = None
+    revenue_account: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class ServiceOut(ServiceBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    tenant_id: UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+# ============================================================
+# ECOTAX (ITS) — configuració per establiment
+# ============================================================
+class EcoTaxConfigBase(BaseModel):
+    category: str                                  # hotel_5star | hotel_4star_sup | ...
+    high_rate: Decimal                             # taxa temporada alta (per persona/nit)
+    low_rate: Decimal                              # taxa temporada baixa
+    high_season_start: str = "05-01"               # DD-MM
+    high_season_end: str = "10-31"                 # DD-MM
+    discount_from_night: int = 9                   # des de la 9a nit
+    discount_pct: Decimal = Decimal("0.50")        # 0.50 = 50%
+    exempt_age: int = 16                           # menors d'aquesta edat exempts
+    vat_rate: Decimal = Decimal("0.10")            # IVA de l'ecotaxa
+    year: Optional[int] = None
+    active: bool = True
+
+
+class EcoTaxConfigCreate(EcoTaxConfigBase):
+    property_id: UUID
+
+
+class EcoTaxConfigUpdate(BaseModel):
+    category: Optional[str] = None
+    high_rate: Optional[Decimal] = None
+    low_rate: Optional[Decimal] = None
+    high_season_start: Optional[str] = None
+    high_season_end: Optional[str] = None
+    discount_from_night: Optional[int] = None
+    discount_pct: Optional[Decimal] = None
+    exempt_age: Optional[int] = None
+    vat_rate: Optional[Decimal] = None
+    year: Optional[int] = None
+    active: Optional[bool] = None
+
+
+class EcoTaxConfigOut(EcoTaxConfigBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    property_id: UUID
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class EcoTaxCalcLine(BaseModel):
+    """Desglossament d'una nit d'ecotaxa."""
+    night_index: int
+    date: date
+    season: str                                    # alta | baixa
+    rate: Decimal                                  # tarifa aplicada per persona
+    guests_liable: int                             # persones que paguen (adults no exempts)
+    amount: Decimal                                # import total de la nit
+
+
+class EcoTaxCalcResult(BaseModel):
+    """Resultat del càlcul de l'ecotaxa d'una reserva."""
+    total: Decimal
+    vat: Decimal                                   # IVA (10%) sobre el total
+    lines: List[EcoTaxCalcLine]
+
+
+class EcoTaxCalcRequest(BaseModel):
+    """Entrada per calcular l'ecotaxa d'una estada."""
+    property_id: UUID
+    check_in: date
+    check_out: date
+    adults: int = 0
+    children: int = 0

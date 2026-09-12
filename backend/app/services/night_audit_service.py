@@ -116,6 +116,7 @@ def _post_room_night(
         unit_price=amount,
         tax_rate=Decimal("0.00"),
         amount=amount,
+        account_code="room_revenue",
     )
     db.add(item)
     folio.total_amount = (folio.total_amount or Decimal("0")) + amount
@@ -166,6 +167,7 @@ def _post_meal(
         unit_price=amount,
         tax_rate=Decimal("0.00"),
         amount=amount,
+        account_code="meal_revenue",
     )
     db.add(item)
     folio.total_amount = (folio.total_amount or Decimal("0")) + amount

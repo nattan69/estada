@@ -180,6 +180,7 @@ class Tenant(Base):
     properties = relationship("Property", back_populates="tenant", cascade="all, delete-orphan")
     guests = relationship("Guest", back_populates="tenant", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="tenant", cascade="all, delete-orphan")
+    services = relationship("Service", back_populates="tenant", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -225,6 +226,7 @@ class Property(Base):
     housekeeping_tasks = relationship("HousekeepingTask", back_populates="property", cascade="all, delete-orphan")
     maintenance_tasks = relationship("MaintenanceTask", back_populates="property", cascade="all, delete-orphan")
     integrations = relationship("Integration", back_populates="property", cascade="all, delete-orphan")
+    ecotax_configs = relationship("EcoTaxConfig", back_populates="property", cascade="all, delete-orphan")
 
     __table_args__ = (Index("ix_properties_tenant_code", "tenant_id", "code", unique=True),)
 
@@ -830,3 +832,58 @@ class JournalEntryLine(Base):
     entry = relationship("JournalEntry", back_populates="lines")
 
     __table_args__ = (Index("ix_jel_entry", "entry_id"),)
+
+
+class Service(Base):
+    """Servei/ítem facturable amb el seu tipus d'IVA.
+
+    Cada servei té el seu IVA estipulat (10% allotjament/restauració, 21%
+    general, 4% superreduït...) i el compte d'ingrés (AccountCode) al qual es
+    mapeja. És la font de veritat del tipus impositiu: la taula de serveis de
+    la BD, no un IVA global.
+    """
+    __tablename__ = "services"
+    id = uuid_pk()
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    code = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    category = Column(String)          # allotjament | restauracio | benestar | aparcament | botiga | esdeveniments
+    vat_rate = Column(Numeric(6, 3), default=0.10)   # fracció: 0.10, 0.21, 0.04
+    revenue_account = Column(String)    # AccountCode (room_revenue, meal_revenue, extra_revenue...)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    tenant = relationship("Tenant", back_populates="services")
+
+    __table_args__ = (Index("ix_services_tenant_code", "tenant_id", "code", unique=True),)
+
+
+class EcoTaxConfig(Base):
+    """Configuració de l'Impost sobre Estades Turístiques (ITS/ecotaxa).
+
+    Tarifes per persona/nit segons la categoria de l'establiment i la
+    temporada (alta/baixa), amb bonificació des de la nit N i exempció per
+    edat. L'IVA de l'ecotaxa (10%) es recull a `vat_rate`. `year` permet
+    guardar historial quan el Govern actualitza les tarifes.
+    """
+    __tablename__ = "ecotax_configs"
+    id = uuid_pk()
+    property_id = Column(UUID(as_uuid=True), ForeignKey("properties.id", ondelete="CASCADE"), nullable=False)
+    category = Column(String, nullable=False)     # hotel_5star | hotel_4star_sup | hotel_4star | hotel_1_3star | hostal | camping...
+    high_rate = Column(Numeric(12, 2), nullable=False)   # taxa temporada alta (per persona/nit)
+    low_rate = Column(Numeric(12, 2), nullable=False)    # taxa temporada baixa
+    high_season_start = Column(String, default="05-01")  # DD-MM (1 de maig)
+    high_season_end = Column(String, default="10-31")    # DD-MM (31 d'octubre)
+    discount_from_night = Column(Integer, default=9)     # des de la 9a nit consecutiva
+    discount_pct = Column(Numeric(6, 3), default=0.50)   # 0.50 = 50% de descompte
+    exempt_age = Column(Integer, default=16)             # menors d'aquesta edat exempts
+    vat_rate = Column(Numeric(6, 3), default=0.10)       # IVA de l'ecotaxa (10%)
+    year = Column(Integer)                               # any (historial de tarifes)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    property = relationship("Property", back_populates="ecotax_configs")
+
+    __table_args__ = (Index("ix_ecotax_prop_year", "property_id", "year", unique=True),)

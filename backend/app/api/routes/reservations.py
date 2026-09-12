@@ -6,9 +6,11 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from ...database import get_db
-from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room, User
+from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room, User, Property, BillingMode, Payment, PaymentType, PaymentStatus, FolioItemType
 from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse, FolioOut
 from ...services.availability_service import search_availability
+from ...services.pricing_service import build_reservation_breakdown
+from ...services.journal_service import journal_payment, journal_checkin_taxes
 from ...services.security import require_roles
 
 router = APIRouter()
@@ -135,8 +137,8 @@ def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db), _:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     if res.status == "checked_in":
         raise HTTPException(status_code=400, detail="La reserva ya está en check-in")
-    
-    # Abrir folio si la reserva aún no tiene (cargos de alojamiento)
+
+    # Abrir folio si la reserva aún no tiene.
     folio = res.folio
     if folio is None:
         folio = Folio(
@@ -148,27 +150,89 @@ def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db), _:
             currency=res.currency,
             total_amount=Decimal("0"),
             paid_amount=Decimal("0"),
-            balance=Decimal("0")
+            balance=Decimal("0"),
         )
         db.add(folio)
         db.flush()
-        
-        total = Decimal("0")
-        for night in res.nights:
-            item = FolioItem(
+
+    # Mode de facturació global de la propietat (prepaid/postpaid).
+    prop = db.get(Property, res.property_id)
+    prepaid = (prop.billing_mode == BillingMode.PREPAID.value) if prop else True
+
+    if prepaid:
+        # Factura a l'entrada: es calcula el total (base + IVA per servei +
+        # ecotaxa + IVA de l'ecotaxa), es posta l'IVA i l'ecotaxa com a
+        # càrrecs (passius) i es cobra tot — política de Tomeu: no entra
+        # ningú que no hagi pagat l'estada sencera. El foli queda ACREEDOR
+        # (balance negatiu = base pendent de consumir) i el night audit va
+        # minvant aquesta bestreta nit a nit fins a zero.
+        bd = build_reservation_breakdown(db, res)
+        vat_total = bd["vat_room"] + bd["vat_meal"] + bd["vat_ecotaxa"]
+        ecotaxa_total = bd["ecotaxa"]
+        entry_date = res.check_in or date.today()
+
+        if vat_total > 0:
+            db.add(FolioItem(
                 folio_id=folio.id,
-                type="room_night",
-                description=f"Alojamiento {night.date}",
+                type=FolioItemType.TAX.value,
+                description="IVA",
                 quantity=1,
-                unit_price=night.amount,
-                tax_rate=Decimal("10.00"),
-                amount=night.amount
+                unit_price=vat_total,
+                tax_rate=Decimal("0"),
+                amount=vat_total,
+                account_code="vat_payable",
+            ))
+            folio.total_amount = (folio.total_amount or Decimal("0")) + vat_total
+
+        if ecotaxa_total > 0:
+            db.add(FolioItem(
+                folio_id=folio.id,
+                type=FolioItemType.TAX.value,
+                description="Ecotaxa (ITS)",
+                quantity=1,
+                unit_price=ecotaxa_total,
+                tax_rate=Decimal("0"),
+                amount=ecotaxa_total,
+                account_code="tax_payable",
+            ))
+            folio.total_amount = (folio.total_amount or Decimal("0")) + ecotaxa_total
+
+        # Cobrament total (bestreta) al check-in.
+        total_a_cobrar = bd["total"]
+        if total_a_cobrar > 0:
+            payment = Payment(
+                folio_id=folio.id,
+                provider="manual",
+                method="cash",  # per defecte; parametritzable en una iteració posterior
+                payment_type=PaymentType.ADVANCE.value,
+                status=PaymentStatus.CAPTURED.value,
+                amount=total_a_cobrar,
+                currency=res.currency or "EUR",
+                captured_at=datetime.now(),
             )
-            db.add(item)
-            total += night.amount
-        folio.total_amount = total
-        folio.balance = total
-    
+            db.add(payment)
+            folio.paid_amount = (folio.paid_amount or Decimal("0")) + total_a_cobrar
+
+        folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+
+        # Assentaments: bestreta rebuda + IVA/ecotaxa facturats a l'entrada.
+        journal_payment(
+            db,
+            property_id=res.property_id,
+            folio_id=folio.id,
+            amount=total_a_cobrar,
+            entry_date=entry_date,
+            payment_type=PaymentType.ADVANCE.value,
+        )
+        journal_checkin_taxes(
+            db,
+            property_id=res.property_id,
+            folio_id=folio.id,
+            vat_amount=vat_total,
+            ecotaxa_amount=ecotaxa_total,
+            entry_date=entry_date,
+        )
+
     res.status = "checked_in"
     db.commit()
     return {"message": "Check-in realizado", "folio_id": str(folio.id)}

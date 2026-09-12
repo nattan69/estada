@@ -264,3 +264,40 @@ def journal_extra_posted(
             (tax_account, Decimal("0"), tax_amount),
         ],
     )
+
+
+def journal_checkin_taxes(
+    db: Session,
+    *,
+    property_id: UUID,
+    folio_id: UUID,
+    vat_amount: Decimal,
+    ecotaxa_amount: Decimal,
+    entry_date: date,
+) -> JournalEntry:
+    """Reconeix l'IVA i l'ecotaxa al check-in (factura a l'entrada).
+
+    Consumeix la bestreta (D ADVANCE_CUSTOMERS) contra el passiu d'IVA
+    (H VAT_PAYABLE) i la taxa turística (H TAX_PAYABLE). L'IVA de l'ecotaxa
+    s'inclou dins `vat_amount` (es merita al cobrament, art. 75.2 LIVA).
+    """
+    vat_amount = Decimal(str(vat_amount or 0))
+    ecotaxa_amount = Decimal(str(ecotaxa_amount or 0))
+    total_debit = vat_amount + ecotaxa_amount
+    lines: list[tuple[str, Decimal, Decimal]] = []
+    if total_debit > 0:
+        lines.append((AccountCode.ADVANCE_CUSTOMERS.value, total_debit, Decimal("0")))
+    if vat_amount > 0:
+        lines.append((AccountCode.VAT_PAYABLE.value, Decimal("0"), vat_amount))
+    if ecotaxa_amount > 0:
+        lines.append((AccountCode.TAX_PAYABLE.value, Decimal("0"), ecotaxa_amount))
+    return _post_entry(
+        db,
+        property_id=property_id,
+        source=JournalEntrySource.CHECKIN.value,
+        entry_type=JournalEntryType.TAX_COLLECTED.value,
+        entry_date=entry_date,
+        folio_id=folio_id,
+        description="IVA i ecotaxa facturats a l'entrada",
+        lines=lines,
+    )
