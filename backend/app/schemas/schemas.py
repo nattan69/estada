@@ -904,3 +904,8 @@ class EcoTaxCalcRequest(BaseModel):
     check_out: date
     adults: int = 0
     children: int = 0
+
+
+class CheckInRequest(BaseModel):
+    """Payload opcional del check-in (mètode de pagament de la bestreta)."""
+    payment_method: str = "cash"   # cash | card | transfer | deposit (cash per defecte)

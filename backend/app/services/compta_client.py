@@ -25,6 +25,8 @@ _MAP: dict[str, str] = {
     "cash": "5700",                   # caixa (fill de 570)
     "bank": "5720",                   # banc/transferència (fill de 572)
     "card": "5730",                   # targetes TPV (pont)
+    "transfer": "5720",               # transferència bancària
+    "deposit": "4109",                # dipòsit de reserva (passiu)
     "accounts_receivable": "4300",    # client genèric (postpaid)
     "accounts_receivable_agency": "4310",  # client TO/agència
     "accounts_receivable_vcc": "4311",     # VCC garantia

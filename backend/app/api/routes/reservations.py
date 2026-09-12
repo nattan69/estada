@@ -7,13 +7,16 @@ from decimal import Decimal
 
 from ...database import get_db
 from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioItem, Room, User, Property, BillingMode, Payment, PaymentType, PaymentStatus, FolioItemType
-from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse, FolioOut
+from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse, FolioOut, CheckInRequest
 from ...services.availability_service import search_availability
 from ...services.pricing_service import build_reservation_breakdown
 from ...services.journal_service import journal_payment, journal_checkin_taxes
 from ...services.security import require_roles
 
 router = APIRouter()
+
+# Mètodes de pagament del check-in (select): valor d'entrada → method del Payment.
+_PAYMENT_METHOD_MAP = {"cash": "cash", "card": "card", "transfer": "bank", "deposit": "deposit"}
 
 @router.post("/quote", response_model=List[QuoteResponse])
 def get_quote(payload: QuoteRequest, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
@@ -131,7 +134,7 @@ def cancel_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: U
     return {"message": "Reserva cancelada"}
 
 @router.post("/{reservation_id}/check-in")
-def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
+def check_in_reservation(reservation_id: UUID, payload: CheckInRequest = CheckInRequest(), db: Session = Depends(get_db), _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
     res = db.get(Reservation, reservation_id)
     if not res:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -203,7 +206,7 @@ def check_in_reservation(reservation_id: UUID, db: Session = Depends(get_db), _:
             payment = Payment(
                 folio_id=folio.id,
                 provider="manual",
-                method="cash",  # per defecte; parametritzable en una iteració posterior
+                method=_PAYMENT_METHOD_MAP.get(payload.payment_method, "cash"),
                 payment_type=PaymentType.ADVANCE.value,
                 status=PaymentStatus.CAPTURED.value,
                 amount=total_a_cobrar,
