@@ -167,6 +167,9 @@ def envia_cierre_a_compta(
 
 
 def _post(url: str, key: str, payload: dict) -> dict:
+    if not key:
+        logger.warning("[COMPTA] COMPTA_KEY_ESTADA no configurada al .env — no s'envia")
+        return {"ok": False, "error": "COMPTA_KEY_ESTADA no configurada"}
     try:
         r = httpx.post(
             f"{url}/api/v1/intake/estada",
