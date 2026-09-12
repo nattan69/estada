@@ -4,10 +4,12 @@
 # Idempotent per external_id ("estada-<tipus>-<id>"): Compta no duplica.
 # API key: COMPTA_KEY_ESTADA (X-API-Key) — la mateixa que el backend de Compta espera.
 #
-# Mapping AccountCode (conceptual, d'Estada) → PGC (el que Compta ja té sembrat).
-# Font de veritat: guia Compta + acord Maria↔Flavia 12/09. Els comptes d'INGRÉS
-# (room_revenue / meal_revenue) duen dos possibles codis (7050 vs 7030) segons la
-# versió de la guia — veure `_INGRES_ROOM`: S'HA DE CONFIRMAR AMB FLAVIA.
+# Mapping AccountCode (conceptual, d'Estada) → PGC (Compta). RATIFICAT 12/09
+# contra el PGC real per na Flavia. Tots els codis existeixen a Compta.
+#
+# Nota tècnica (Flavia): 477, 570 i 572 tenen subcomptes. Usa els fills
+# (4771 IVA repercutit, 5700 caixa, 5720 banc) O fes els pares movibles.
+# Aquí fem servir els FILLS perquè no quedin a mov=0.
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -19,22 +21,21 @@ logger = logging.getLogger(__name__)
 
 COMPTA_URL = "http://localhost:8010"  # servei de Compta (OnePlus, tmux compta)
 
-# Mapping conceptual → PGC. Els valors s'han de confirmar contra la guia Compta.
-_INGRES_ROOM = "7050"    # allotjament (habitació) — NA FLAVIA VA DIR 7030?? CONFIRMAR
-_INGRES_MEAL = "7052"    # Servicios de restauración/pensión
 _MAP: dict[str, str] = {
-    "cash": "570",                    # efectiu (pagaments per mètode → 570)
+    "cash": "5700",                   # caixa (fill de 570)
+    "bank": "5720",                   # banc/transferència (fill de 572)
     "card": "5730",                   # targetes TPV (pont)
     "accounts_receivable": "4300",    # client genèric (postpaid)
     "accounts_receivable_agency": "4310",  # client TO/agència
+    "accounts_receivable_vcc": "4311",     # VCC garantia
     "advance_customers": "4108",      # bestreta de clients (passiu)
     "deposit_received": "4109",       # dipòsits de reserves (passiu)
-    "room_revenue": _INGRES_ROOM,
-    "meal_revenue": _INGRES_MEAL,
-    "extra_revenue": "7050",          # extres (comparteix codi d'ingrés servei) — CONFIRMAR
-    "vat_payable": "477",             # IVA repercutit
+    "room_revenue": "7030",           # Servicios allotjament (subc. 7031 habitacions / 7032 apartaments)
+    "meal_revenue": "7052",           # restauració/pensió
+    "extra_revenue": "7050",          # altres serveis (7053 minibar, 7054 renta)
+    "vat_payable": "4771",            # IVA repercutit (fill de 477)
     "tax_payable": "4755",            # taxa turística (passiu)
-    "commission_expense": "623",      # despesa comissió agència — CONFIRMAR
+    "commission_expense": "623",      # despesa comissió agència
 }
 
 
