@@ -13,3 +13,24 @@ body {
   background-color: var(--background);
   color: var(--foreground);
 }
+
+/* ---------- Mode dia/nit (decisió Tomeu 13/09) ---------- */
+/* El layout porta bg-gray-50 text-slate-900 hardcodejats al <body>; els
+   sobreescribim amb !important quan .dark és actiu, i posem tokens. */
+html.dark body {
+  background-color: #0d1626 !important;
+  color: #e5e9f0 !important;
+}
+html.dark aside, html.dark .sidebar { background-color: #1a1a2e; }
+html.dark main h1, html.dark main h2 { color: #e2b04a; }
+html.dark table { color: #e5e9f0; }
+html.dark th { background-color: #16213e; color: #e5e9f0; border-color: #24314f; }
+html.dark td { border-color: #24314f; }
+html.dark .bg-white, html.dark div[class*="bg-white"] { background-color: #16213e !important; }
+html.dark .text-slate-900, html.dark .text-slate-800, html.dark .text-gray-900, html.dark .text-gray-800 { color: #e5e9f0 !important; }
+html.dark .text-gray-600, html.dark .text-gray-500, html.dark .text-slate-600, html.dark .text-slate-500 { color: #9aa7b8 !important; }
+html.dark .border-gray-200, html.dark .border-gray-300, html.dark .border-slate-200 { border-color: #24314f !important; }
+html.dark input, html.dark select, html.dark textarea {
+  background-color: #0d1626; color: #e5e9f0; border-color: #24314f;
+}
+html.dark button { color-scheme: dark; }
