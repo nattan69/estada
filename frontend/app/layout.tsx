@@ -4,6 +4,11 @@ import LogoutButton from '@/components/LogoutButton';
 
 const inter = Inter({ subsets: ['latin'] });
 
+// Totes les pàgines es renderitzen dinàmicament (al request, no prerender
+// estàtic). Les pàgines criden l'API i usen localStorage (només al navegador);
+// el prerender estàtic fallaria al servidor.
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: {

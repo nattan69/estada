@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Dialog } from '@/components/ui/dialog';
 import { AddChargeDialog } from '@/components/folios/AddChargeDialog';
@@ -7,8 +8,9 @@ import { PaymentDialog } from '@/components/folios/PaymentDialog';
 import { FolioTable } from '@/components/folios/FolioTable';
 import { translations } from '@/lib/i18n';
 
-export default function FolioPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function FolioPage() {
+  const params = useParams();
+  const id = params.id as string;
   const [folio, setFolio] = useState<any>(null);
   const [lang, setLang] = useState<'ca' | 'es' | 'en'>('ca');
   const [isChargeOpen, setIsChargeOpen] = useState(false);

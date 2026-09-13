@@ -20,7 +20,12 @@ import {
   RatePlan
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+// URL base de l'API. Al SERVIDOR (SSR/prerender) cal URL absoluta (localhost:8001,
+// mateix host); al NAVEGADOR va RELATIVA ('') i el proxy de next.config.js la
+// reenvia al backend. Es pot sobreescriure amb NEXT_PUBLIC_API_URL.
+const API_BASE_URL = typeof window === 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001')
+  : (process.env.NEXT_PUBLIC_API_URL || '');
 
 // Mock Data for emergency fallback with explicit typing
 const MOCKS = {
@@ -259,11 +264,13 @@ export function getRefreshToken(): string | null {
 }
 
 export function setTokens(access_token: string, refresh_token: string): void {
+  if (typeof window === 'undefined') return;
   localStorage.setItem('estada_access_token', access_token);
   localStorage.setItem('estada_refresh_token', refresh_token);
 }
 
 export function logout(): void {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem('estada_access_token');
   localStorage.removeItem('estada_refresh_token');
 }
