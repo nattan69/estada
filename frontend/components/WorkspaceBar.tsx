@@ -9,12 +9,12 @@ import { api } from '@/lib/api';
  * Persistència: localStorage (propietat) — les dates a sessionStorage.
  */
 
-type Property = { id: number; name?: string; nom?: string };
+type Property = { id: string; name?: string; nom?: string };
 type Dates = { from: string; to: string };
 
 const WorkspaceContext = createContext<{
-  propertyId: number | null;
-  setPropertyId: (id: number) => void;
+  propertyId: string | null;
+  setPropertyId: (id: string) => void;
   properties: Property[];
   dates: Dates;
   setDates: (d: Dates) => void;
@@ -30,7 +30,7 @@ export const useWorkspace = () => useContext(WorkspaceContext);
 
 export default function WorkspaceBar() {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [propertyId, setPropertyIdState] = useState<number | null>(null);
+  const [propertyId, setPropertyIdState] = useState<string | null>(null);
   const [dates, setDatesState] = useState<Dates>({ from: '', to: '' });
 
   useEffect(() => {
@@ -39,17 +39,17 @@ export default function WorkspaceBar() {
         const props = await api.properties.list();
         setProperties(props || []);
         const saved = localStorage.getItem('estada-property-id');
-        const valid = props?.some((p: Property) => String(p.id) === saved);
-        setPropertyIdState(valid ? Number(saved) : props?.[0]?.id ?? null);
+        const valid = props?.some((p: Property) => p.id === saved);
+        setPropertyIdState(valid ? saved : props?.[0]?.id ?? null);
       } catch { /* sense sessió — no pinta res */ }
     })();
     const s = sessionStorage.getItem('estada-dates');
     if (s) try { setDatesState(JSON.parse(s)); } catch {}
   }, []);
 
-  const setPropertyId = (id: number) => {
+  const setPropertyId = (id: string) => {
     setPropertyIdState(id);
-    localStorage.setItem('estada-property-id', String(id));
+    localStorage.setItem('estada-property-id', id);
   };
 
   const setDates = (d: Dates) => {
@@ -71,7 +71,7 @@ export default function WorkspaceBar() {
         <select
           aria-label="Propietat"
           value={propertyId ?? ''}
-          onChange={(e) => setPropertyId(Number(e.target.value))}
+          onChange={(e) => setPropertyId(e.target.value)}
           style={{ padding: '6px 10px', borderRadius: '8px', fontWeight: 600 }}
         >
           {properties.map((p) => <option key={p.id} value={p.id}>🏨 {nom(p)}</option>)}
