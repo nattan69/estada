@@ -48,6 +48,7 @@ export default function ReservationsPage() {
     if (q) {
       list = list.filter((r) =>
         (r.confirmation_code || '').toLowerCase().includes(q) ||
+        (r.guest_name || '').toLowerCase().includes(q) ||
         (r.guest_id || '').toLowerCase().includes(q) ||
         (r.status || '').toLowerCase().includes(q) ||
         (r.check_in || '').includes(q) ||
@@ -195,7 +196,7 @@ export default function ReservationsPage() {
                     title="Doble clic per editar"
                   >
                     <td className="p-4 font-mono text-sm text-white">{res.confirmation_code}</td>
-                    <td className="p-4 text-slate-300">{res.guest_id}</td>
+                    <td className="p-4 text-slate-300">{res.guest_name || res.guest_id}</td>
                     <td className="p-4 text-slate-300">{res.check_in}</td>
                     <td className="p-4 text-slate-300">{res.check_out}</td>
                     <td className="p-4">
@@ -230,9 +231,14 @@ export default function ReservationsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-5 border-b border-slate-700">
-              <h2 className="text-xl font-bold text-white">
-                Reserva {selected.confirmation_code}
-              </h2>
+              <div>
+                <h2 className="text-xl font-bold text-white">
+                  Reserva {selected.confirmation_code}
+                </h2>
+                {selected.guest_name && (
+                  <p className="text-sm text-slate-400 mt-1">👤 {selected.guest_name}</p>
+                )}
+              </div>
               <button onClick={closeModal} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
             </div>
 

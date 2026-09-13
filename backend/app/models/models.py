@@ -357,6 +357,11 @@ class Guest(Base):
     document_number = Column(String)
     marketing_opt_in = Column(Boolean, default=False)
     notes = Column(Text)
+    # Camps per a les fixes de policia (registre de viatgers / SES Hospederías)
+    sex = Column(String)  # "M" | "F" | "X"
+    birth_date = Column(Date)
+    nationality = Column(String)  # codi ISO 2 lletres (ex: "ES")
+    country_of_residence = Column(String)  # codi ISO 2 lletres (ex: "ES")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -418,6 +423,13 @@ class Reservation(Base):
             if f.folio_target == FolioTarget.GUEST.value:
                 return f
         return self.folios[0] if self.folios else None
+
+    @builtins.property
+    def guest_name(self):
+        """Nom complet del client (per a la taula de reserves i les fixes de policia)."""
+        if self.guest:
+            return f"{self.guest.first_name} {self.guest.last_name}".strip()
+        return None
 
     __table_args__ = (
         Index("ix_res_prop_code", "property_id", "confirmation_code", unique=True),

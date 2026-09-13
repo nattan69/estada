@@ -221,6 +221,11 @@ class GuestBase(BaseModel):
     document_number: Optional[str] = None
     marketing_opt_in: bool = False
     notes: Optional[str] = None
+    # Camps per a les fixes de policia (registre de viatgers / SES Hospederías)
+    sex: Optional[str] = None  # "M" | "F" | "X"
+    birth_date: Optional[date] = None
+    nationality: Optional[str] = None  # codi ISO 2 lletres (ex: "ES")
+    country_of_residence: Optional[str] = None  # codi ISO 2 lletres (ex: "ES")
 
 class GuestCreate(GuestBase):
     pass
@@ -234,6 +239,11 @@ class GuestUpdate(BaseModel):
     document_number: Optional[str] = None
     marketing_opt_in: Optional[bool] = None
     notes: Optional[str] = None
+    # Camps per a les fixes de policia
+    sex: Optional[str] = None
+    birth_date: Optional[date] = None
+    nationality: Optional[str] = None
+    country_of_residence: Optional[str] = None
 
 class GuestOut(GuestBase):
     model_config = ConfigDict(from_attributes=True)
@@ -294,6 +304,7 @@ class ReservationOut(ReservationBase):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     canceled_at: Optional[datetime] = None
+    guest_name: Optional[str] = None  # nom complet del client (per a la taula i les fixes)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

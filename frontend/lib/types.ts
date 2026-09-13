@@ -109,12 +109,18 @@ export interface Guest {
   document_number?: string;
   marketing_opt_in: boolean;
   notes?: string;
+  // Camps per a les fixes de policia (registre de viatgers / SES Hospederías)
+  sex?: string;
+  birth_date?: string;
+  nationality?: string;
+  country_of_residence?: string;
 }
 
 export interface Reservation {
   id: string;
   property_id: string;
   guest_id: string;
+  guest_name?: string;
   room_type_id: string;
   rate_plan_id?: string;
   assigned_room_id?: string;
