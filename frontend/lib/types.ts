@@ -300,6 +300,9 @@ export interface NightAuditSummary {
   payments_total?: string;
   extras_posted?: number;
   extras_revenue?: string;
+  police_registry_count?: number;
+  police_report_sent?: boolean;
+  police_report_sent_at?: string;
 }
 
 export interface NightAudit {

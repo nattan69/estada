@@ -413,6 +413,15 @@ def run_night_audit(
         summary["other_revenue"] = str(extras_revenue)
         summary["total_revenue"] = str(room_revenue + meal_revenue + extras_revenue)
 
+        # --- 8. Registre de viatgers (fixes de policia / SES Hospederías) ---
+        # Recompte dels hostes que entren o surten avui, per a la tasca diària
+        # d'enviament de les fixes. La llista completa es regenera sota demanda
+        # a l'endpoint d'enviament.
+        from .police_report_service import build_guest_registry
+        registry = build_guest_registry(db, property_id, audit_date)
+        summary["police_registry_count"] = len(registry)
+        summary["police_report_sent"] = False
+
         audit.summary = summary
         audit.status = "completed"
         audit.completed_at = datetime.now(timezone.utc)

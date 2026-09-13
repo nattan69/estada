@@ -553,6 +553,9 @@ export const api = {
     list: (params: { propertyId?: string, audit_date?: string }) => 
       request<NightAudit[]>(`/api/v1/night-audit?${new URLSearchParams(params)}`),
     get: (id: string) => request<NightAudit>(`/api/v1/night-audit/${id}`),
+    sendPoliceReport: (id: string) => request<{ sent: boolean; count: number; xml: string; sent_at: string }>(`/api/v1/night-audit/${id}/send-police-report`, {
+      method: 'POST',
+    }),
   },
   contracts: {
     list: (params?: { propertyId?: string }) => 

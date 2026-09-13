@@ -11,6 +11,8 @@ export default function NightAuditPage() {
   const [selectedAudit, setSelectedAudit] = useState<NightAudit | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [sendingPolice, setSendingPolice] = useState(false);
+  const [policeMsg, setPoliceMsg] = useState<string | null>(null);
 
   const t = translations[lang];
   
@@ -38,6 +40,15 @@ export default function NightAuditPage() {
       extras: 'Extres facturats',
       extrasCount: 'Nombre d\'extres',
       extrasRevenue: 'Import dels extres',
+      police: {
+        title: 'Fixes de policia (viatgers)',
+        count: 'Viatgers del dia',
+        pending: 'Pendent d\'enviar',
+        sent: 'Enviat',
+        send: 'Enviar fixes',
+        sending: 'Enviant...',
+        sentAt: 'Enviat a',
+      },
       error: 'Error en l\'execució'
     },
     es: {
@@ -62,6 +73,15 @@ export default function NightAuditPage() {
       extras: 'Extras facturados',
       extrasCount: 'Número de extras',
       extrasRevenue: 'Importe de los extras',
+      police: {
+        title: 'Fichas de policía (viajeros)',
+        count: 'Viajeros del día',
+        pending: 'Pendiente de enviar',
+        sent: 'Enviado',
+        send: 'Enviar fichas',
+        sending: 'Enviando...',
+        sentAt: 'Enviado a las',
+      },
       error: 'Error en la ejecución'
     },
     en: {
@@ -86,6 +106,15 @@ export default function NightAuditPage() {
       extras: 'Extras billed',
       extrasCount: 'Number of extras',
       extrasRevenue: 'Extras amount',
+      police: {
+        title: 'Police reports (guests)',
+        count: 'Guests today',
+        pending: 'Pending',
+        sent: 'Sent',
+        send: 'Send reports',
+        sending: 'Sending...',
+        sentAt: 'Sent at',
+      },
       error: 'Execution error'
     }
   }[lang];
@@ -115,6 +144,24 @@ export default function NightAuditPage() {
       console.error(e);
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleSendPolice(audit: NightAudit) {
+    setSendingPolice(true);
+    setPoliceMsg(null);
+    try {
+      const res = await api.nightAudit.sendPoliceReport(audit.id);
+      setPoliceMsg(`✓ ${res.count} ${pageT.police.count} · ${pageT.police.sent}`);
+      // refresca el detall seleccionat
+      const updated = await api.nightAudit.get(audit.id);
+      setSelectedAudit(updated);
+      await loadAudits();
+    } catch (e) {
+      console.error(e);
+      setPoliceMsg('✗ Error enviant les fixes');
+    } finally {
+      setSendingPolice(false);
     }
   }
 
@@ -276,6 +323,33 @@ export default function NightAuditPage() {
                     <span className="text-gray-600">{pageT.extrasRevenue}</span>
                     <span className="font-medium">{Number(selectedAudit.summary.extras_revenue || 0).toLocaleString()} €</span>
                   </div>
+                </div>
+              )}
+
+              {/* Fixes de policia (viatgers) — tasca diària del checklist */}
+              {selectedAudit.summary.police_registry_count !== undefined && (
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-bold text-[#1a1a2e] mb-2">{pageT.police.title}</h3>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">{pageT.police.count}</span>
+                    <span className="font-medium">{selectedAudit.summary.police_registry_count}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className={`text-xs font-medium ${selectedAudit.summary.police_report_sent ? 'text-green-600' : 'text-amber-600'}`}>
+                      {selectedAudit.summary.police_report_sent ? pageT.police.sent : pageT.police.pending}
+                    </span>
+                    <button
+                      onClick={() => handleSendPolice(selectedAudit)}
+                      disabled={sendingPolice || selectedAudit.summary.police_report_sent}
+                      className="px-3 py-1.5 bg-[#1a1a2e] text-white rounded text-xs font-medium hover:bg-[#16213e] disabled:opacity-50 transition-colors"
+                    >
+                      {sendingPolice ? pageT.police.sending : pageT.police.send}
+                    </button>
+                  </div>
+                  {selectedAudit.summary.police_report_sent_at && (
+                    <p className="text-xs text-gray-400 mt-1">{pageT.police.sentAt} {selectedAudit.summary.police_report_sent_at}</p>
+                  )}
+                  {policeMsg && <p className="text-xs mt-1 text-green-600">{policeMsg}</p>}
                 </div>
               )}
             </div>
