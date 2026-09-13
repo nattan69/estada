@@ -11,7 +11,7 @@ from ...models.models import Reservation, ReservationNight, Rate, Folio, FolioIt
 from ...schemas.schemas import ReservationCreate, ReservationOut, ReservationUpdate, QuoteRequest, QuoteResponse, FolioOut, CheckInRequest
 from ...services.availability_service import search_availability
 from ...services.pricing_service import build_reservation_breakdown
-from ...services.journal_service import journal_payment, journal_checkin_taxes
+from ...services.journal_service import journal_payment, journal_checkin_taxes, journal_deposit_applied
 from ...services.security import require_roles
 
 router = APIRouter()
@@ -203,33 +203,43 @@ def check_in_reservation(reservation_id: UUID, payload: CheckInRequest = CheckIn
             ))
             folio.total_amount = (folio.total_amount or Decimal("0")) + ecotaxa_total
 
-        # Cobrament total (bestreta) al check-in.
+        # Cobrament al check-in, descomptant el dipòsit pagat en fer la reserva.
         total_a_cobrar = bd["total"]
-        if total_a_cobrar > 0:
+        deposit = Decimal(str(res.deposit_amount or 0))
+        resta = total_a_cobrar - deposit  # el que falta cobrar ara
+
+        if resta > 0:
             payment = Payment(
                 folio_id=folio.id,
                 provider="manual",
                 method=_PAYMENT_METHOD_MAP.get(payload.payment_method, "cash"),
                 payment_type=PaymentType.ADVANCE.value,
                 status=PaymentStatus.CAPTURED.value,
-                amount=total_a_cobrar,
+                amount=resta,
                 currency=res.currency or "EUR",
                 captured_at=datetime.now(),
             )
             db.add(payment)
-            folio.paid_amount = (folio.paid_amount or Decimal("0")) + total_a_cobrar
+            folio.paid_amount = (folio.paid_amount or Decimal("0")) + resta
+
+        if deposit > 0:
+            # El dipòsit (ja pagat en fer la reserva) es transfereix a la bestreta.
+            folio.paid_amount = (folio.paid_amount or Decimal("0")) + deposit
 
         folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
 
-        # Assentaments: bestreta rebuda + IVA/ecotaxa facturats a l'entrada.
-        journal_payment(
-            db,
-            property_id=res.property_id,
-            folio_id=folio.id,
-            amount=total_a_cobrar,
-            entry_date=entry_date,
-            payment_type=PaymentType.ADVANCE.value,
-        )
+        # Assentaments: bestreta rebuda + dipòsit aplicat + IVA/ecotaxa.
+        if resta > 0:
+            journal_payment(
+                db, property_id=res.property_id, folio_id=folio.id,
+                amount=resta, entry_date=entry_date,
+                payment_type=PaymentType.ADVANCE.value,
+            )
+        if deposit > 0:
+            journal_deposit_applied(
+                db, property_id=res.property_id, folio_id=folio.id,
+                amount=deposit, entry_date=entry_date,
+            )
         journal_checkin_taxes(
             db,
             property_id=res.property_id,

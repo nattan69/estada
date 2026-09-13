@@ -304,3 +304,34 @@ def journal_checkin_taxes(
         description="IVA i ecotaxa facturats",
         lines=lines,
     )
+
+
+def journal_deposit_applied(
+    db: Session,
+    *,
+    property_id: UUID,
+    folio_id: UUID,
+    amount: Decimal,
+    entry_date: date,
+) -> JournalEntry:
+    """Aplica el dipòsit de la reserva a la bestreta (D 4109, H 4108).
+
+    El dipòsit (pagat en fer la reserva, compte 4109 DEPOSIT_RECEIVED) es
+    transfereix a la bestreta de clients (4108 ADVANCE_CUSTOMERS) perquè
+    cobreixi la producció. El dipòsit inicial (D cash, H 4109) es registra en
+    fer la reserva.
+    """
+    amount = Decimal(str(amount or 0))
+    return _post_entry(
+        db,
+        property_id=property_id,
+        source=JournalEntrySource.CHECKIN.value,
+        entry_type=JournalEntryType.ADJUSTMENT.value,
+        entry_date=entry_date,
+        folio_id=folio_id,
+        description="Dipòsit de la reserva aplicat a la bestreta",
+        lines=[
+            (AccountCode.DEPOSIT_RECEIVED.value, amount, Decimal("0")),
+            (AccountCode.ADVANCE_CUSTOMERS.value, Decimal("0"), amount),
+        ],
+    )

@@ -123,6 +123,17 @@ def _assert_quadratura(db, res):
     return folio, nets
 
 
+def _global_nets(db, prop_id):
+    """Nets de TOTS els assentaments de la propietat (incloent els sense foli)."""
+    entries = db.query(JournalEntry).filter(JournalEntry.property_id == prop_id).all()
+    nets = {}
+    for e in entries:
+        for l in e.lines:
+            nets[l.account_code] = (nets.get(l.account_code, Decimal("0"))
+                                    + Decimal(str(l.debit or 0)) - Decimal(str(l.credit or 0)))
+    return nets
+
+
 def test_prepaid_multiple_nights():
     with TestClient(app) as c:
         headers = _login(c)
@@ -192,4 +203,96 @@ def test_ecotax_night9_bonus():
         calc = calculate_ecotax(db, property_id=prop.id, check_in=date(2026, 7, 1),
                                 check_out=date(2026, 7, 11), adults=2)
         assert abs(Decimal(calc["total"]) - eco) < Decimal("0.01"), f"ecotaxa {calc['total']} != {eco}"
+        db.close()
+
+
+def test_ecotax_low_season():
+    from app.services.ecotax_service import calculate_ecotax
+    with TestClient(app) as c:
+        db = SessionLocal()
+        _seed_services(db)
+        prop, rt = _make_property(db, "T6", "prepaid")
+        # 2 nits, 2 adults, novembre (temporada baixa): 0,75€/persona/nit.
+        calc = calculate_ecotax(db, property_id=prop.id, check_in=date(2026, 11, 1),
+                                check_out=date(2026, 11, 3), adults=2)
+        eco = Decimal("0.75") * 2 * 2
+        assert abs(Decimal(calc["total"]) - eco) < Decimal("0.01"), f"ecotaxa {calc['total']} != {eco}"
+        assert calc["lines"][0]["season"] == "baixa"
+        db.close()
+
+
+def test_ecotax_children_exempt():
+    from app.services.ecotax_service import calculate_ecotax
+    with TestClient(app) as c:
+        db = SessionLocal()
+        _seed_services(db)
+        prop, rt = _make_property(db, "T7", "prepaid")
+        # 2 adults + 2 menors (<16, exempts): només paguen els adults.
+        calc = calculate_ecotax(db, property_id=prop.id, check_in=date(2026, 7, 1),
+                                check_out=date(2026, 7, 2), adults=2, children=2)
+        eco = Decimal("3.00") * 2
+        assert abs(Decimal(calc["total"]) - eco) < Decimal("0.01"), f"ecotaxa {calc['total']} != {eco}"
+        assert calc["lines"][0]["guests_liable"] == 2
+        db.close()
+
+
+def test_prepaid_deposit():
+    from app.services.journal_service import journal_payment
+    from app.models.models import PaymentType
+    with TestClient(app) as c:
+        headers = _login(c)
+        db = SessionLocal()
+        _seed_services(db)
+        prop, rt = _make_property(db, "T8", "prepaid")
+        guest = _make_guest(db, "t8@example.com")
+        res = _make_reservation(db, prop, rt, guest, "TEST-8", date(2026, 7, 1), nights=1)
+        res.deposit_amount = Decimal("50.00")
+        db.commit()
+        # Dipòsit inicial pagat en fer la reserva (D cash, H 4109), sense foli encara.
+        journal_payment(db, property_id=prop.id, folio_id=None, amount=Decimal("50.00"),
+                        entry_date=date(2026, 7, 1), payment_type=PaymentType.DEPOSIT.value)
+        db.commit()
+        # Check-in (descompta el dipòsit i el transfereix a bestreta) + night audit + check-out.
+        _run_stay(c, headers, res, prop, date(2026, 7, 1), 1)
+        folio, nets = _folio_and_nets(db, res)
+        assert folio.balance == Decimal("0.00")
+        # Quadratura GLOBAL (incloent el dipòsit inicial sense foli): tot a zero.
+        gnet = _global_nets(db, prop.id)
+        assert abs(sum(gnet.values())) < Decimal("0.01"), f"global desequilibrat: {dict(gnet)}"
+        assert gnet.get("deposit_received", Decimal("0")) == Decimal("0"), "dipòsit (4109) no quadra"
+        assert gnet.get("advance_customers", Decimal("0")) == Decimal("0"), "bestreta (4108) no quadra"
+        db.close()
+
+
+def test_agency_routing():
+    """Reserva d'agència (TO): l'habitació va al foli `agency`, no al `guest`."""
+    with TestClient(app) as c:
+        headers = _login(c)
+        db = SessionLocal()
+        _seed_services(db)
+        prop, rt = _make_property(db, "T9", "postpaid")
+        guest = _make_guest(db, "t9@example.com")
+        res = _make_reservation(db, prop, rt, guest, "TEST-9", date(2026, 7, 1), nights=1)
+        res.agency_code = "TO-001"
+        db.commit()
+
+        # Check-in (postpaid, no cobra) → crea el foli guest.
+        r = c.post(f"/api/v1/reservations/{res.id}/check-in", headers=headers)
+        assert r.status_code == 200
+        # Night audit → posta l'habitació al foli agency (routing TO).
+        r = c.post("/api/v1/night-audit/run", headers=headers,
+                   json={"property_id": str(prop.id), "audit_date": "2026-07-01"})
+        assert r.status_code == 200
+
+        db.expire_all()
+        res2 = db.get(Reservation, res.id)
+        folios = res2.folios
+        targets = {f.folio_target for f in folios}
+        assert "agency" in targets, f"falta foli agency: {targets}"
+        agency = [f for f in folios if f.folio_target == "agency"][0]
+        assert any(it.type == "room_night" for it in agency.items), "l'habitació no és al foli agency"
+        # El foli guest (client) NO duu l'habitació.
+        guest_folio = [f for f in folios if f.folio_target == "guest"]
+        if guest_folio:
+            assert not any(it.type == "room_night" for it in guest_folio[0].items)
         db.close()
