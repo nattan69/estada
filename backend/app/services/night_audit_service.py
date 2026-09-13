@@ -34,6 +34,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from ..models.models import (
+    AccountCode,
     BillingMode,
     Folio,
     FolioItem,
@@ -125,14 +126,25 @@ def _post_room_night(
     # Assentament comptable: reconeixement de l'ingrés de la nit.
     # Segons el mode de facturació: prepaid aplica la bestreta; postpaid
     # genera el deute del client (que es cancel·la amb la factura a la sortida).
+    # El deutor és l'agència (4310) si la reserva ve d'un TO, si no el client (4300).
+    # L'agència paga DESPRÉS (factura a 4310), mai bestreta al check-in:
+    # independentment del mode de la propietat, el deutor és postpaid.
+    is_agency = _is_agency_reservation(reservation)
+    receivable_account = (
+        AccountCode.ACCOUNTS_RECEIVABLE_AGENCY.value
+        if is_agency
+        else AccountCode.ACCOUNTS_RECEIVABLE.value
+    )
+    effective_prepaid = prepaid and not is_agency
     journal_room_night(
         db,
         property_id=reservation.property_id,
         folio_id=folio.id,
         amount=amount,
         entry_date=night.date,
-        prepaid=prepaid,
+        prepaid=effective_prepaid,
         night_audit_id=night_audit_id,
+        receivable_account=receivable_account,
     )
     return item
 
@@ -173,14 +185,22 @@ def _post_meal(
     folio.total_amount = (folio.total_amount or Decimal("0")) + amount
     folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
 
+    is_agency = _is_agency_reservation(reservation)
+    receivable_account = (
+        AccountCode.ACCOUNTS_RECEIVABLE_AGENCY.value
+        if is_agency
+        else AccountCode.ACCOUNTS_RECEIVABLE.value
+    )
+    effective_prepaid = prepaid and not is_agency
     journal_meal(
         db,
         property_id=reservation.property_id,
         folio_id=folio.id,
         amount=amount,
         entry_date=night.date,
-        prepaid=prepaid,
+        prepaid=effective_prepaid,
         night_audit_id=night_audit_id,
+        receivable_account=receivable_account,
     )
     return item
 

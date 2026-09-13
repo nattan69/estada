@@ -111,17 +111,22 @@ def _journal_daily_revenue(
     entry_type: str,
     description: str,
     night_audit_id: Optional[UUID] = None,
+    receivable_account: str = AccountCode.ACCOUNTS_RECEIVABLE.value,
 ) -> JournalEntry:
     """Assentament d'una producció diària (habitació o pensió) al night audit.
 
     - `prepaid=True` → la producció aplica la bestreta: D ADVANCE_CUSTOMERS, H <revenue_account>.
-    - `prepaid=False` → genera el càrrec al client/TO: D ACCOUNTS_RECEIVABLE, H <revenue_account>.
+    - `prepaid=False` → genera el càrrec al client/TO: D <receivable_account>, H <revenue_account>.
+
+    `receivable_account` és `accounts_receivable` (client directe, 4300) per
+    defecte, o `accounts_receivable_agency` (TO/agència, 4310) quan la reserva
+    ve d'una agència.
     """
     amount = Decimal(str(amount or 0))
     debit_account = (
         AccountCode.ADVANCE_CUSTOMERS.value
         if prepaid
-        else AccountCode.ACCOUNTS_RECEIVABLE.value
+        else receivable_account
     )
     return _post_entry(
         db,
@@ -148,6 +153,7 @@ def journal_room_night(
     entry_date: date,
     prepaid: bool,
     night_audit_id: Optional[UUID] = None,
+    receivable_account: str = AccountCode.ACCOUNTS_RECEIVABLE.value,
 ) -> JournalEntry:
     """Reconeixement de l'ingrés d'una nit d'habitació (night audit)."""
     return _journal_daily_revenue(
@@ -161,6 +167,7 @@ def journal_room_night(
         entry_type=JournalEntryType.ROOM_REVENUE.value,
         description=f"Allotjament {entry_date.isoformat()}",
         night_audit_id=night_audit_id,
+        receivable_account=receivable_account,
     )
 
 
@@ -173,6 +180,7 @@ def journal_meal(
     entry_date: date,
     prepaid: bool,
     night_audit_id: Optional[UUID] = None,
+    receivable_account: str = AccountCode.ACCOUNTS_RECEIVABLE.value,
 ) -> JournalEntry:
     """Reconeixement de l'ingrés de la pensió diària (night audit)."""
     return _journal_daily_revenue(
@@ -186,6 +194,7 @@ def journal_meal(
         entry_type=JournalEntryType.MEAL_REVENUE.value,
         description=f"Pensió {entry_date.isoformat()}",
         night_audit_id=night_audit_id,
+        receivable_account=receivable_account,
     )
 
 
@@ -197,12 +206,16 @@ def journal_payment(
     amount: Decimal,
     entry_date: date,
     payment_type: str,
+    receivable_account: str = AccountCode.ACCOUNTS_RECEIVABLE.value,
 ) -> JournalEntry:
     """Cobrament rebut.
 
     - `deposit` (dipòsit en fer la reserva): D CASH, H DEPOSIT_RECEIVED (4109).
     - `advance` (bestreta a l'entrada): D CASH, H ADVANCE_CUSTOMERS (4108).
-    - `settlement` (saldo a la sortida): D CASH, H ACCOUNTS_RECEIVABLE.
+    - `settlement` (saldo a la sortida): D CASH, H <receivable_account>.
+
+    `receivable_account` és `accounts_receivable` (client directe) per defecte,
+    o `accounts_receivable_agency` (TO/agència) quan cobra l'agència.
     """
     amount = Decimal(str(amount or 0))
     if payment_type == PaymentType.DEPOSIT.value:
@@ -212,7 +225,7 @@ def journal_payment(
         credit_account = AccountCode.ADVANCE_CUSTOMERS.value
         source = JournalEntrySource.CHECKIN.value
     else:
-        credit_account = AccountCode.ACCOUNTS_RECEIVABLE.value
+        credit_account = receivable_account
         source = JournalEntrySource.CHECKOUT.value
     return _post_entry(
         db,

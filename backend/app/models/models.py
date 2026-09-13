@@ -124,7 +124,8 @@ class PaymentType(str, enum.Enum):
 
 class AccountCode(str, enum.Enum):
     CASH = "cash"                                 # Banc/Caixa/TPV
-    ACCOUNTS_RECEIVABLE = "accounts_receivable"     # Comptes a cobrar (client/TO)
+    ACCOUNTS_RECEIVABLE = "accounts_receivable"     # Comptes a cobrar (client directe)
+    ACCOUNTS_RECEIVABLE_AGENCY = "accounts_receivable_agency"  # Comptes a cobrar TO/agència
     ADVANCE_CUSTOMERS = "advance_customers"         # Bestreta de clients (passiu)
     DEPOSIT_RECEIVED = "deposit_received"           # Dipòsits de reserves (passiu)
     ROOM_REVENUE = "room_revenue"                   # Ingressos allotjament

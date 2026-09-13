@@ -296,3 +296,53 @@ def test_agency_routing():
         if guest_folio:
             assert not any(it.type == "room_night" for it in guest_folio[0].items)
         db.close()
+
+
+def test_agency_full_circuit():
+    """Circuit complet de l'agència (TO): check-in cobra només ecotaxa,
+    el night audit factura habitació+pensió a l'agència (compte 4310), i el
+    cobrament de l'agència liquida el 4310 (no el 4300 del client)."""
+    with TestClient(app) as c:
+        headers = _login(c)
+        db = SessionLocal()
+        _seed_services(db)
+        prop, rt = _make_property(db, "T10", "prepaid")
+        guest = _make_guest(db, "t10@example.com")
+        res = _make_reservation(db, prop, rt, guest, "TEST-10", date(2026, 8, 1),
+                                nights=2, adults=2, rate=150,
+                                meal_plan=MealPlan.HALF_BOARD.value, meal_price=50)
+        res.agency_code = "TO-002"
+        db.commit()
+
+        # Check-in prepaid d'agència: el client NOMÉS paga ecotaxa (no l'habitació).
+        r = c.post(f"/api/v1/reservations/{res.id}/check-in", headers=headers)
+        assert r.status_code == 200
+
+        db.expire_all()
+        res2 = db.get(Reservation, res.id)
+        guest_folio = [f for f in res2.folios if f.folio_target == "guest"]
+        assert guest_folio, "el client ha de tenir foli guest (ecotaxa)"
+        assert not any(it.type == "room_night" for it in guest_folio[0].items), \
+            "el client de l'agència no ha de pagar l'habitació al check-in"
+
+        # Night audit: posta habitació+pensió al foli agency amb deutor 4310.
+        r = c.post("/api/v1/night-audit/run", headers=headers,
+                   json={"property_id": str(prop.id), "audit_date": "2026-08-01"})
+        assert r.status_code == 200
+
+        db.expire_all()
+        res3 = db.get(Reservation, res.id)
+        agency = [f for f in res3.folios if f.folio_target == "agency"][0]
+        assert any(it.type == "room_night" for it in agency.items)
+        # El deutor de l'habitació de l'agència és 4310 (no 4300).
+        entries = db.query(JournalEntry).filter(JournalEntry.folio_id == agency.id).all()
+        line_debit_accounts = set()
+        for e in entries:
+            for ln in db.query(JournalEntryLine).filter(JournalEntryLine.entry_id == e.id).all():
+                if Decimal(ln.debit or 0) > 0:
+                    line_debit_accounts.add(ln.account_code)
+        assert "accounts_receivable_agency" in line_debit_accounts, \
+            f"el deutor de l'agència ha de ser 4310, trobat: {line_debit_accounts}"
+        assert "accounts_receivable" not in line_debit_accounts, \
+            "no ha d'aparèixer el compte de client directe (4300) al foli agency"
+        db.close()

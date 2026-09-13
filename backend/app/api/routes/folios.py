@@ -7,7 +7,7 @@ from decimal import Decimal
 import logging
 
 from ...database import get_db
-from ...models.models import Folio, FolioItem, Payment, PaymentType, User
+from ...models.models import AccountCode, Folio, FolioItem, FolioTarget, Payment, PaymentType, User
 from ...schemas.schemas import FolioOut, ChargeCreate, DiscountCreate, PaymentCreate, RefundCreate, FolioItemOut, PaymentOut
 from ...services.journal_service import journal_payment
 from ...services.security import require_roles
@@ -120,6 +120,13 @@ def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(ge
     folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
     
     # Assentament comptable del cobrament (bestreta o saldo).
+    # Si el foli és d'agència, el cobrament liquida el compte del TO (4310),
+    # no el del client directe (4300).
+    receivable_account = (
+        AccountCode.ACCOUNTS_RECEIVABLE_AGENCY.value
+        if folio.folio_target == FolioTarget.AGENCY.value
+        else AccountCode.ACCOUNTS_RECEIVABLE.value
+    )
     journal_payment(
         db,
         property_id=folio.property_id,
@@ -127,6 +134,7 @@ def add_payment(folio_id: UUID, payload: PaymentCreate, db: Session = Depends(ge
         amount=amount,
         entry_date=datetime.now().date(),
         payment_type=payload.payment_type,
+        receivable_account=receivable_account,
     )
     
     db.commit()

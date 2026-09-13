@@ -173,9 +173,24 @@ def check_in_reservation(reservation_id: UUID, payload: CheckInRequest = CheckIn
         # (balance negatiu = base pendent de consumir) i el night audit va
         # minvant aquesta bestreta nit a nit fins a zero.
         bd = build_reservation_breakdown(db, res)
-        vat_total = bd["vat_room"] + bd["vat_meal"] + bd["vat_ecotaxa"]
-        ecotaxa_total = bd["ecotaxa"]
         entry_date = res.check_in or date.today()
+        is_agency = bool(getattr(res, "agency_code", None))
+
+        ecotaxa_total = bd["ecotaxa"]
+        vat_ecotaxa = bd["vat_ecotaxa"]
+
+        if is_agency:
+            # Reserva de TO: l'agència paga habitació + pensió + el seu IVA
+            # (es factura al foli agency, compte 4310, al night audit). El
+            # client de l'agència NOMÉS paga l'ecotaxa + IVA de l'ecotaxa al
+            # foli guest. L'habitació/pensió NO es cobren ni es posten aquí.
+            vat_total = vat_ecotaxa
+            total_a_cobrar = ecotaxa_total + vat_ecotaxa
+        else:
+            # Client directe: paga tota l'estada (base + IVA per servei +
+            # ecotaxa + IVA de l'ecotaxa).
+            vat_total = bd["vat_room"] + bd["vat_meal"] + vat_ecotaxa
+            total_a_cobrar = bd["total"]
 
         if vat_total > 0:
             db.add(FolioItem(
@@ -204,7 +219,6 @@ def check_in_reservation(reservation_id: UUID, payload: CheckInRequest = CheckIn
             folio.total_amount = (folio.total_amount or Decimal("0")) + ecotaxa_total
 
         # Cobrament al check-in, descomptant el dipòsit pagat en fer la reserva.
-        total_a_cobrar = bd["total"]
         deposit = Decimal(str(res.deposit_amount or 0))
         resta = total_a_cobrar - deposit  # el que falta cobrar ara
 
