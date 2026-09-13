@@ -2,6 +2,7 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import LogoutButton from '@/components/LogoutButton';
 import ThemeToggle from '@/components/ThemeToggle';
+import WorkspaceBar from '@/components/WorkspaceBar';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -43,6 +44,7 @@ export default function RootLayout({
             </nav>
           </aside>
           <main className="flex-1 p-8">
+            <WorkspaceBar />
             {children}
           </main>
         </div>
