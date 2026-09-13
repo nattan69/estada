@@ -52,7 +52,8 @@ from ..models.models import (
     Room,
 )
 
-from .journal_service import journal_meal, journal_room_night
+from .journal_service import journal_meal, journal_room_night, journal_vat_charged
+from .pricing_service import _vat_rate_for
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,36 @@ def _post_room_night(
         night_audit_id=night_audit_id,
         receivable_account=receivable_account,
     )
+
+    if is_agency:
+        # IVA de la nit facturat a l'agència (D 4310, H 4771). El client de
+        # l'agència no paga l'habitació, així que l'IVA va al foli agency.
+        prop = db.get(Property, reservation.property_id)
+        tenant_id = prop.tenant_id if prop else None
+        vat_rate = _vat_rate_for(db, tenant_id, "room", Decimal("0.10"))
+        vat_amount = (amount * vat_rate).quantize(Decimal("0.01"))
+        if vat_amount > 0:
+            db.add(FolioItem(
+                folio_id=folio.id,
+                type=FolioItemType.TAX.value,
+                description=f"IVA allotjament {night.date.isoformat()}",
+                quantity=1,
+                unit_price=vat_amount,
+                tax_rate=vat_rate,
+                amount=vat_amount,
+                account_code="vat_payable",
+            ))
+            folio.total_amount = (folio.total_amount or Decimal("0")) + vat_amount
+            folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+            journal_vat_charged(
+                db,
+                property_id=reservation.property_id,
+                folio_id=folio.id,
+                vat_amount=vat_amount,
+                entry_date=night.date,
+                receivable_account=AccountCode.ACCOUNTS_RECEIVABLE_AGENCY.value,
+                night_audit_id=night_audit_id,
+            )
     return item
 
 
@@ -202,6 +233,35 @@ def _post_meal(
         night_audit_id=night_audit_id,
         receivable_account=receivable_account,
     )
+
+    if is_agency:
+        # IVA de la pensió facturat a l'agència (D 4310, H 4771).
+        prop = db.get(Property, reservation.property_id)
+        tenant_id = prop.tenant_id if prop else None
+        vat_rate = _vat_rate_for(db, tenant_id, "meal", Decimal("0.10"))
+        vat_amount = (amount * vat_rate).quantize(Decimal("0.01"))
+        if vat_amount > 0:
+            db.add(FolioItem(
+                folio_id=folio.id,
+                type=FolioItemType.TAX.value,
+                description=f"IVA pensió {night.date.isoformat()}",
+                quantity=1,
+                unit_price=vat_amount,
+                tax_rate=vat_rate,
+                amount=vat_amount,
+                account_code="vat_payable",
+            ))
+            folio.total_amount = (folio.total_amount or Decimal("0")) + vat_amount
+            folio.balance = (folio.total_amount or Decimal("0")) - (folio.paid_amount or Decimal("0"))
+            journal_vat_charged(
+                db,
+                property_id=reservation.property_id,
+                folio_id=folio.id,
+                vat_amount=vat_amount,
+                entry_date=night.date,
+                receivable_account=AccountCode.ACCOUNTS_RECEIVABLE_AGENCY.value,
+                night_audit_id=night_audit_id,
+            )
     return item
 
 

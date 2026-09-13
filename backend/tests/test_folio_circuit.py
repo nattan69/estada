@@ -345,4 +345,15 @@ def test_agency_full_circuit():
             f"el deutor de l'agència ha de ser 4310, trobat: {line_debit_accounts}"
         assert "accounts_receivable" not in line_debit_accounts, \
             "no ha d'aparèixer el compte de client directe (4300) al foli agency"
+
+        # L'IVA de l'habitació/pensió es factura a l'agència: item tax + H 4771.
+        assert any(it.type == "tax" for it in agency.items), \
+            "el foli agency ha de dur l'IVA de l'habitació/pensió"
+        credit_accounts = set()
+        for e in entries:
+            for ln in db.query(JournalEntryLine).filter(JournalEntryLine.entry_id == e.id).all():
+                if Decimal(ln.credit or 0) > 0:
+                    credit_accounts.add(ln.account_code)
+        assert "vat_payable" in credit_accounts, \
+            f"l'IVA de l'agència ha de tenir credit a 4771 (vat_payable), trobat: {credit_accounts}"
         db.close()

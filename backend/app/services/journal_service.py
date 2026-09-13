@@ -348,3 +348,39 @@ def journal_deposit_applied(
             (AccountCode.ADVANCE_CUSTOMERS.value, Decimal("0"), amount),
         ],
     )
+
+
+def journal_vat_charged(
+    db: Session,
+    *,
+    property_id: UUID,
+    folio_id: UUID,
+    vat_amount: Decimal,
+    entry_date: date,
+    receivable_account: str = AccountCode.ACCOUNTS_RECEIVABLE.value,
+    source: str = JournalEntrySource.NIGHT_AUDIT.value,
+    night_audit_id: Optional[UUID] = None,
+) -> Optional[JournalEntry]:
+    """IVA repercutit facturat al deutor (client o agència).
+
+    D <receivable_account>, H VAT_PAYABLE (4771). Es fa servir al night audit
+    per facturar l'IVA de l'habitació/pensió a l'agència (4310), ja que el
+    client de l'agència no paga l'habitació. Retorna None si no hi ha IVA.
+    """
+    vat_amount = Decimal(str(vat_amount or 0))
+    if vat_amount <= 0:
+        return None
+    return _post_entry(
+        db,
+        property_id=property_id,
+        source=source,
+        entry_type=JournalEntryType.TAX_COLLECTED.value,
+        entry_date=entry_date,
+        folio_id=folio_id,
+        night_audit_id=night_audit_id,
+        description="IVA de l'habitació/pensió facturat al deutor",
+        lines=[
+            (receivable_account, vat_amount, Decimal("0")),
+            (AccountCode.VAT_PAYABLE.value, Decimal("0"), vat_amount),
+        ],
+    )
