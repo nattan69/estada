@@ -2,40 +2,50 @@
 
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { api } from '@/lib/api';
+import CalendarDropdown from '@/components/CalendarDropdown';
 
 /**
- * Context global de propietat + rang de dates (decisió Tomeu 13/09).
+ * Context global de propietat + data (decisió Tomeu 13/09).
  * Selector tipus Google al header; les pàgines consumeixen useWorkspace().
- * Persistència: localStorage (propietat) — les dates a sessionStorage.
+ * Persistència: localStorage (propietat) — la data a sessionStorage.
  *
  * WorkspaceProvider embolcalla TOTA l'app (al layout), perquè qualsevol
  * pàgina (children) pugui llegir useWorkspace(). WorkspaceBar és només la
  * barra visual (selectors) que llegeix el mateix context.
+ *
+ * La data és UNA sola data (no rang): el "des de → fins" no tenia sentit,
+ * i s'ha substituït per un calendari desplegable (model del dashboard de
+ * Jornals).
  */
 
 type Property = { id: string; name?: string; nom?: string };
-type Dates = { from: string; to: string };
 
 const WorkspaceContext = createContext<{
   propertyId: string | null;
   setPropertyId: (id: string) => void;
   properties: Property[];
-  dates: Dates;
-  setDates: (d: Dates) => void;
+  date: string;
+  setDate: (d: string) => void;
 }>({
   propertyId: null,
   setPropertyId: () => {},
   properties: [],
-  dates: { from: '', to: '' },
-  setDates: () => {},
+  date: '',
+  setDate: () => {},
 });
 
 export const useWorkspace = () => useContext(WorkspaceContext);
 
+function pad(n: number) { return n.toString().padStart(2, '0'); }
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertyId, setPropertyIdState] = useState<string | null>(null);
-  const [dates, setDatesState] = useState<Dates>({ from: '', to: '' });
+  const [date, setDateState] = useState<string>(todayStr());
 
   useEffect(() => {
     (async () => {
@@ -47,8 +57,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setPropertyIdState(valid ? saved : props?.[0]?.id ?? null);
       } catch { /* sense sessió — no pinta res */ }
     })();
-    const s = sessionStorage.getItem('estada-dates');
-    if (s) try { setDatesState(JSON.parse(s)); } catch {}
+    const s = sessionStorage.getItem('estada-date');
+    if (s) setDateState(s);
   }, []);
 
   const setPropertyId = (id: string) => {
@@ -56,24 +66,22 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('estada-property-id', id);
   };
 
-  const setDates = (d: Dates) => {
-    setDatesState(d);
-    sessionStorage.setItem('estada-dates', JSON.stringify(d));
+  const setDate = (d: string) => {
+    setDateState(d);
+    sessionStorage.setItem('estada-date', d);
   };
 
   return (
-    <WorkspaceContext.Provider value={{ propertyId, setPropertyId, properties, dates, setDates }}>
+    <WorkspaceContext.Provider value={{ propertyId, setPropertyId, properties, date, setDate }}>
       {children}
     </WorkspaceContext.Provider>
   );
 }
 
 export default function WorkspaceBar() {
-  const { properties, propertyId, setPropertyId, dates, setDates } = useWorkspace();
+  const { properties, propertyId, setPropertyId, date, setDate } = useWorkspace();
 
   const nom = (p: Property) => p.name || p.nom || `Propietat ${p.id}`;
-  const avui = new Date().toISOString().split('T')[0];
-  const fa7 = new Date(Date.now() - 7 * 864e5).toISOString().split('T')[0];
 
   return (
     <div className="workspace-bar" style={{
@@ -85,23 +93,11 @@ export default function WorkspaceBar() {
         aria-label="Propietat"
         value={propertyId ?? ''}
         onChange={(e) => setPropertyId(e.target.value)}
-        style={{ padding: '6px 10px', borderRadius: '8px', fontWeight: 600 }}
+        style={{ padding: '8px 12px', borderRadius: '10px', fontWeight: 600 }}
       >
         {properties.map((p) => <option key={p.id} value={p.id}>🏨 {nom(p)}</option>)}
       </select>
-      <input type="date" aria-label="Des de" value={dates.from}
-        onChange={(e) => setDates({ ...dates, from: e.target.value })}
-        style={{ padding: '5px 8px', borderRadius: '8px' }} />
-      <span style={{ opacity: 0.5 }}>→</span>
-      <input type="date" aria-label="Fins a" value={dates.to}
-        onChange={(e) => setDates({ ...dates, to: e.target.value })}
-        style={{ padding: '5px 8px', borderRadius: '8px' }} />
-      {!dates.from && (
-        <button onClick={() => setDates({ from: fa7, to: avui })}
-          style={{ padding: '5px 10px', borderRadius: '8px', cursor: 'pointer' }}>
-          Últims 7 dies
-        </button>
-      )}
+      <CalendarDropdown value={date} onChange={setDate} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { translations } from '@/lib/i18n';
 import { useWorkspace } from '@/components/WorkspaceBar';
 
 export default function DashboardPage() {
-  const { propertyId, dates } = useWorkspace();
+  const { propertyId, date } = useWorkspace();
   const [lang, setLang] = useState<'ca' | 'es' | 'en'>('ca');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,14 +24,13 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         const today = new Date().toISOString().split('T')[0];
-        const from = dates.from || today;
-        const to = dates.to || today;
+        const d = date || today;
 
         const [occRes, revRes, arrRes, depRes] = await Promise.all([
-          api.reports.occupancy({ propertyId: pid, from, to }),
-          api.reports.revenue({ propertyId: pid, from, to }),
-          api.reports.arrivals({ date: to }),
-          api.reports.departures({ date: to }),
+          api.reports.occupancy({ propertyId: pid, from: d, to: d }),
+          api.reports.revenue({ propertyId: pid, from: d, to: d }),
+          api.reports.arrivals({ date: d }),
+          api.reports.departures({ date: d }),
         ]);
 
         setStats({
@@ -49,7 +48,7 @@ export default function DashboardPage() {
       }
     }
     loadDashboard();
-  }, [propertyId, dates]);
+  }, [propertyId, date]);
 
   const t = translations[lang];
 

@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { useWorkspace } from '@/components/WorkspaceBar';
 
 export default function FrontDeskPage() {
-  const { propertyId, dates } = useWorkspace();
+  const { propertyId, date } = useWorkspace();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({
@@ -21,11 +21,11 @@ export default function FrontDeskPage() {
       try {
         setLoading(true);
         const today = new Date().toISOString().split('T')[0];
-        const date = dates.to || today;
+        const d = date || today;
 
         const [arrRes, depRes, inHouseRes] = await Promise.all([
-          api.reports.arrivals({ date }),
-          api.reports.departures({ date }),
+          api.reports.arrivals({ date: d }),
+          api.reports.departures({ date: d }),
           api.reservations.list({ propertyId: pid, status: 'checked_in' }),
         ]);
 
@@ -45,7 +45,7 @@ export default function FrontDeskPage() {
       }
     }
     loadFrontDesk();
-  }, [propertyId, dates]);
+  }, [propertyId, date]);
 
   if (loading) return <div className="p-6 text-white">Loading...</div>;
   if (error) return <div className="p-6 text-red-400">{error}</div>;

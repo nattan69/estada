@@ -451,6 +451,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     }),
+    update: (id: string, data: any) => request<Reservation>(`/api/v1/reservations/${id}`, { 
+      method: 'PATCH', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
     cancel: (id: string) => request<void>(`/api/v1/reservations/${id}/cancel`, { method: 'POST' }),
     checkIn: (id: string) => request<void>(`/api/v1/reservations/${id}/check-in`, { method: 'POST' }),
     checkOut: (id: string) => request<void>(`/api/v1/reservations/${id}/check-out`, { method: 'POST' }),
