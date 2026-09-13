@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Toggle dia/nit global (decisió Tomeu 13/09).
+ * Toggle dia/nit global (decisió Tomeu 13/09 — al header, part dreta).
  * Persistència: localStorage + class 'dark' a <html>.
- * Colors: tokens a globals.css (--bg, --fg, --card, ...) que canvien segons .dark.
+ * En el header es mostra compacte: només la icona sol/lluna.
  */
 export default function ThemeToggle() {
   const [dark, setDark] = useState<boolean | null>(null);
@@ -30,10 +30,11 @@ export default function ThemeToggle() {
     <button
       onClick={toggle}
       title={dark ? 'Mode dia' : 'Mode nit'}
-      className="mt-auto flex items-center justify-center gap-2 w-full p-2 rounded bg-white/10 hover:bg-white/20 text-sm transition"
-      style={{ color: 'inherit' }}
+      aria-label={dark ? 'Mode dia' : 'Mode nit'}
+      className="shrink-0 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 transition flex items-center justify-center"
+      style={{ width: 42, height: 42, fontSize: 20, lineHeight: 1, cursor: 'pointer' }}
     >
-      {dark ? '☀️ Mode dia' : '🌙 Mode nit'}
+      {dark ? '☀️' : '🌙'}
     </button>
   );
 }

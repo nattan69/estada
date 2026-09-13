@@ -44,7 +44,10 @@ export default function RootLayout({
             </nav>
           </aside>
           <main className="flex-1 p-8">
-            <WorkspaceBar />
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <WorkspaceBar />
+              <ThemeToggle />
+            </div>
             {children}
           </main>
         </div>
