@@ -40,7 +40,6 @@ export default function RootLayout({
               <a href="/settings/users" className="hover:text-brand-gold p-2 rounded">👥 Usuaris</a>
               <a href="/login" className="hover:text-brand-gold p-2 rounded">Login</a>
               <LogoutButton />
-              <ThemeToggle />
             </nav>
           </aside>
           <main className="flex-1 p-8">
