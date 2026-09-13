@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { NightAudit, NightAuditTask } from '@/lib/types';
 import { translations } from '@/lib/i18n';
+import { useWorkspace } from '@/components/WorkspaceBar';
 
 function taskDataText(task: NightAuditTask): string {
   const d = task.data;
@@ -21,6 +22,7 @@ function taskDataText(task: NightAuditTask): string {
 }
 
 export default function NightAuditPage() {
+  const { propertyId } = useWorkspace();
   const [lang, setLang] = useState<'ca' | 'es' | 'en'>('ca');
   const [audits, setAudits] = useState<NightAudit[]>([]);
   const [selectedAudit, setSelectedAudit] = useState<NightAudit | null>(null);
@@ -161,12 +163,13 @@ export default function NightAuditPage() {
 
   useEffect(() => {
     loadAudits();
-  }, []);
+  }, [propertyId]);
 
   async function loadAudits() {
+    if (!propertyId) return;
     try {
       setLoading(true);
-      const data = await api.nightAudit.list({ propertyId: 'prop-1' });
+      const data = await api.nightAudit.list({ propertyId });
       setAudits(data);
     } catch (e) {
       console.error(e);
@@ -176,9 +179,10 @@ export default function NightAuditPage() {
   }
 
   async function handleRun() {
+    if (!propertyId) return;
     try {
       setRunning(true);
-      await api.nightAudit.run({ property_id: 'prop-1' });
+      await api.nightAudit.run({ property_id: propertyId });
       await loadAudits();
     } catch (e) {
       console.error(e);
