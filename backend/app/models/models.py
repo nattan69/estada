@@ -727,10 +727,40 @@ class NightAudit(Base):
     property = relationship("Property")
     created_by = relationship("User", foreign_keys=[created_by_id])
     journal_entries = relationship("JournalEntry", back_populates="night_audit")
+    tasks = relationship("NightAuditTask", back_populates="night_audit", cascade="all, delete-orphan", passive_deletes=True)
 
     __table_args__ = (
         Index("ix_night_audit_prop_date", "property_id", "audit_date", unique=True),
         Index("ix_night_audit_prop_status", "property_id", "status"),
+    )
+
+
+class NightAuditTask(Base):
+    """Tasca del checklist del Night Audit.
+
+    Cada tancament té un checklist de tasques que la recepció ha de verificar
+    (extres facturats, dipòsits capturats, quadrament de caixa, fixes de policia,
+    llistats del matí...). Es creen automàticament en executar el night audit,
+    amb les dades associades (recomptes, imports) a `data`, i l'usuari les va
+    marcant com a `done` o `skipped`.
+    """
+    __tablename__ = "night_audit_tasks"
+    id = uuid_pk()
+    night_audit_id = Column(UUID(as_uuid=True), ForeignKey("night_audits.id", ondelete="CASCADE"), nullable=False)
+    task_key = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    status = Column(String, default="pending")  # pending | done | skipped
+    sort_order = Column(Integer, default=0)
+    data = Column(JSON)  # dades associades (recomptes, imports, etc.)
+    completed_at = Column(DateTime(timezone=True))
+    completed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+    night_audit = relationship("NightAudit", back_populates="tasks")
+    completed_by = relationship("User", foreign_keys=[completed_by_id])
+
+    __table_args__ = (
+        Index("ix_night_audit_tasks_audit", "night_audit_id"),
     )
 
 

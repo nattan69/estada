@@ -2,8 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { NightAudit } from '@/lib/types';
+import { NightAudit, NightAuditTask } from '@/lib/types';
 import { translations } from '@/lib/i18n';
+
+function taskDataText(task: NightAuditTask): string {
+  const d = task.data;
+  if (!d || Object.keys(d).length === 0) return '';
+  if (task.task_key === 'extras_invoiced') return `${d.extras_posted} extres (${Number(d.extras_revenue || 0).toLocaleString()} €)`;
+  if (task.task_key === 'cash_reconciliation') {
+    const methods = Object.entries(d.payments_by_method || {})
+      .map(([m, a]) => `${m}: ${Number(a).toLocaleString()} €`)
+      .join(' · ');
+    return methods ? `${methods} — Total ${Number(d.payments_total || 0).toLocaleString()} €` : `Total ${Number(d.payments_total || 0).toLocaleString()} €`;
+  }
+  if (task.task_key === 'morning_lists') return `${d.arrivals} arribades · ${d.departures} sortides`;
+  if (task.task_key === 'police_report') return `${d.police_registry_count} viatgers`;
+  return JSON.stringify(d);
+}
 
 export default function NightAuditPage() {
   const [lang, setLang] = useState<'ca' | 'es' | 'en'>('ca');
@@ -13,6 +28,7 @@ export default function NightAuditPage() {
   const [running, setRunning] = useState(false);
   const [sendingPolice, setSendingPolice] = useState(false);
   const [policeMsg, setPoliceMsg] = useState<string | null>(null);
+  const [checklist, setChecklist] = useState<NightAuditTask[]>([]);
 
   const t = translations[lang];
   
@@ -49,6 +65,14 @@ export default function NightAuditPage() {
         sending: 'Enviant...',
         sentAt: 'Enviat a',
       },
+      checklist: {
+        title: 'Checklist de tasques',
+        pending: 'Pendent',
+        done: 'Fet',
+        skipped: 'Saltat',
+        progress: 'de',
+        allDone: 'Totes les tasques fetes',
+      },
       error: 'Error en l\'execució'
     },
     es: {
@@ -82,6 +106,14 @@ export default function NightAuditPage() {
         sending: 'Enviando...',
         sentAt: 'Enviado a las',
       },
+      checklist: {
+        title: 'Checklist de tareas',
+        pending: 'Pendiente',
+        done: 'Hecho',
+        skipped: 'Saltado',
+        progress: 'de',
+        allDone: 'Todas las tareas hechas',
+      },
       error: 'Error en la ejecución'
     },
     en: {
@@ -114,6 +146,14 @@ export default function NightAuditPage() {
         send: 'Send reports',
         sending: 'Sending...',
         sentAt: 'Sent at',
+      },
+      checklist: {
+        title: 'Task checklist',
+        pending: 'Pending',
+        done: 'Done',
+        skipped: 'Skipped',
+        progress: 'of',
+        allDone: 'All tasks done',
       },
       error: 'Execution error'
     }
@@ -164,6 +204,34 @@ export default function NightAuditPage() {
       setSendingPolice(false);
     }
   }
+
+  async function loadChecklist(auditId: string) {
+    try {
+      const data = await api.nightAudit.getChecklist(auditId);
+      setChecklist(data);
+    } catch (e) {
+      console.error(e);
+      setChecklist([]);
+    }
+  }
+
+  function selectAudit(audit: NightAudit) {
+    setSelectedAudit(audit);
+    setPoliceMsg(null);
+    loadChecklist(audit.id);
+  }
+
+  async function toggleTask(task: NightAuditTask) {
+    const next: 'pending' | 'done' = task.status === 'done' ? 'pending' : 'done';
+    try {
+      const updated = await api.nightAudit.updateTask(task.id, next);
+      setChecklist((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  const doneCount = checklist.filter((t) => t.status === 'done').length;
 
   const getStatusColor = (status: NightAudit['status']) => {
     switch (status) {
@@ -218,7 +286,7 @@ export default function NightAuditPage() {
               ) : audits.map(audit => (
                 <tr 
                   key={audit.id} 
-                  onClick={() => setSelectedAudit(audit)}
+                  onClick={() => selectAudit(audit)}
                   className={`cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 ${selectedAudit?.id === audit.id ? 'bg-blue-50' : ''}`}
                 >
                   <td className="px-4 py-3 text-sm">{audit.audit_date}</td>
@@ -246,7 +314,45 @@ export default function NightAuditPage() {
                 <h2 className="text-xl font-bold text-[#1a1a2e]">{pageT.detailTitle}</h2>
                 <span className="text-sm text-gray-500">{selectedAudit.audit_date}</span>
               </div>
-              
+
+              {/* Checklist de tasques diàries */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-[#1a1a2e]">☑ {pageT.checklist.title}</h3>
+                  <span className={`text-xs font-semibold ${doneCount === checklist.length && checklist.length > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                    {doneCount} {pageT.checklist.progress} {checklist.length}
+                    {doneCount === checklist.length && checklist.length > 0 ? ' ✓' : ''}
+                  </span>
+                </div>
+                {checklist.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Carregant checklist...</p>
+                ) : (
+                  <div className="space-y-2">
+                    {checklist.map((task) => (
+                      <label key={task.id} className="flex items-start gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={task.status === 'done'}
+                          onChange={() => toggleTask(task)}
+                          className="mt-0.5 accent-[#e2b04a]"
+                        />
+                        <span className="flex-1">
+                          <span className={`block text-sm font-medium ${task.status === 'done' ? 'line-through text-gray-400' : 'text-[#1a1a2e]'}`}>
+                            {task.title}
+                          </span>
+                          {task.description && (
+                            <span className="block text-xs text-gray-500 mt-0.5">{task.description}</span>
+                          )}
+                          {taskDataText(task) && (
+                            <span className="block text-xs text-amber-700 mt-0.5 font-medium">{taskDataText(task)}</span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                   <p className="text-xs text-gray-500 uppercase font-semibold">{pageT.summary.occupancy}</p>

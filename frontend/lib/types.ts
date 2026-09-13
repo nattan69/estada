@@ -316,3 +316,14 @@ export interface NightAudit {
   summary: NightAuditSummary;
   error?: string;
 }
+
+export interface NightAuditTask {
+  id: string;
+  task_key: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'done' | 'skipped';
+  sort_order: number;
+  data?: Record<string, any>;
+  completed_at?: string;
+}

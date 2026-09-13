@@ -714,6 +714,22 @@ class NightAuditOut(BaseModel):
     error: Optional[str] = None
 
 
+class NightAuditTaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    task_key: str
+    title: str
+    description: Optional[str] = None
+    status: str
+    sort_order: int
+    data: Optional[dict] = None
+    completed_at: Optional[datetime] = None
+
+
+class NightAuditTaskUpdate(BaseModel):
+    status: Optional[str] = None  # pending | done | skipped
+
+
 # ============================================================
 # AGENCY CONTRACTS (Yield & Allotment)
 # ============================================================

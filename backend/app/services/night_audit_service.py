@@ -425,6 +425,11 @@ def run_night_audit(
         audit.summary = summary
         audit.status = "completed"
         audit.completed_at = datetime.now(timezone.utc)
+
+        # Crear el checklist de tasques diàries del tancament
+        from .night_audit_checklist import build_checklist
+        build_checklist(db, audit, summary)
+
         db.commit()
         db.refresh(audit)
 

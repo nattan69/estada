@@ -12,8 +12,8 @@ from uuid import UUID
 from datetime import date, datetime, timezone
 
 from ...database import get_db
-from ...models.models import NightAudit, User
-from ...schemas.schemas import NightAuditOut, NightAuditRunRequest
+from ...models.models import NightAudit, NightAuditTask, User
+from ...schemas.schemas import NightAuditOut, NightAuditRunRequest, NightAuditTaskOut, NightAuditTaskUpdate
 from ...services.night_audit_service import run_night_audit
 from ...services.police_report_service import build_guest_registry, build_ses_xml
 from ...services.security import require_roles
@@ -103,3 +103,47 @@ def get_audit(
     if audit is None:
         raise HTTPException(status_code=404, detail="Night audit no trobat")
     return audit
+
+
+@router.get("/{audit_id}/checklist", response_model=List[NightAuditTaskOut])
+def get_checklist(
+    audit_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("owner", "admin", "manager", "reception")),
+):
+    """Llista les tasques del checklist d'un tancament."""
+    audit = db.get(NightAudit, audit_id)
+    if audit is None:
+        raise HTTPException(status_code=404, detail="Night audit no trobat")
+    return (
+        db.query(NightAuditTask)
+        .filter(NightAuditTask.night_audit_id == audit_id)
+        .order_by(NightAuditTask.sort_order)
+        .all()
+    )
+
+
+@router.patch("/tasks/{task_id}", response_model=NightAuditTaskOut)
+def update_task(
+    task_id: UUID,
+    payload: NightAuditTaskUpdate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles("owner", "admin", "manager", "reception")),
+):
+    """Actualitza l'estat d'una tasca del checklist (pending | done | skipped)."""
+    task = db.get(NightAuditTask, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Tasca no trobada")
+    if payload.status is not None:
+        if payload.status not in ("pending", "done", "skipped"):
+            raise HTTPException(status_code=422, detail="Estat invàlid (pending | done | skipped)")
+        task.status = payload.status
+        if payload.status in ("done", "skipped"):
+            task.completed_at = datetime.now(timezone.utc)
+            task.completed_by_id = current.id
+        else:
+            task.completed_at = None
+            task.completed_by_id = None
+    db.commit()
+    db.refresh(task)
+    return task

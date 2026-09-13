@@ -12,6 +12,7 @@ import {
   User,
   NightAudit,
   NightAuditSummary,
+  NightAuditTask,
   AgencyContract,
   ContractAllotment,
   ContractAuditResult,
@@ -553,6 +554,12 @@ export const api = {
     list: (params: { propertyId?: string, audit_date?: string }) => 
       request<NightAudit[]>(`/api/v1/night-audit?${new URLSearchParams(params)}`),
     get: (id: string) => request<NightAudit>(`/api/v1/night-audit/${id}`),
+    getChecklist: (id: string) => request<NightAuditTask[]>(`/api/v1/night-audit/${id}/checklist`),
+    updateTask: (taskId: string, status: 'pending' | 'done' | 'skipped') => request<NightAuditTask>(`/api/v1/night-audit/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    }),
     sendPoliceReport: (id: string) => request<{ sent: boolean; count: number; xml: string; sent_at: string }>(`/api/v1/night-audit/${id}/send-police-report`, {
       method: 'POST',
     }),
