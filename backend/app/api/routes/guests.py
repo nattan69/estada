@@ -5,10 +5,33 @@ from uuid import UUID
 
 from ...database import get_db
 from ...models.models import Guest, User
-from ...schemas.schemas import GuestCreate, GuestOut, GuestUpdate
+from ...schemas.schemas import GuestCreate, GuestOut, GuestUpdate, MrzParseRequest, OcrRequest
 from ...services.security import require_roles
+from ...services.mrz_parser import parse_mrz, to_guest_fields
+from ...services.ocr_service import ocr_from_base64
 
 router = APIRouter()
+
+@router.post("/parse-mrz")
+def parse_document_mrz(payload: MrzParseRequest, _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
+    """Parseja el text MRZ (ICAO 9303) d'un passaport/DNI i retorna les dades del client.
+
+    Serveix tant per a lectors físics USB (keyboard wedge, que escriuen el text
+    MRZ directament) com per a OCR posterior sobre una foto del document.
+    """
+    parsed = parse_mrz(payload.mrz_text)
+    if "error" in parsed:
+        raise HTTPException(status_code=422, detail=parsed["error"])
+    return {"parsed": parsed, "guest_fields": to_guest_fields(parsed)}
+
+
+@router.post("/ocr")
+def ocr_document(payload: OcrRequest, _: User = Depends(require_roles("owner", "admin", "manager", "reception"))):
+    """Reconeix el MRZ d'una foto (base64) del document i retorna les dades del client."""
+    result = ocr_from_base64(payload.image_base64)
+    if "error" in result:
+        raise HTTPException(status_code=422, detail=result["error"])
+    return {"parsed": result, "guest_fields": to_guest_fields(result)}
 
 @router.get("", response_model=List[GuestOut])
 def list_guests(

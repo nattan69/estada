@@ -251,6 +251,14 @@ class GuestOut(GuestBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+
+class MrzParseRequest(BaseModel):
+    mrz_text: str
+
+
+class OcrRequest(BaseModel):
+    image_base64: str
+
 # ============================================================
 # RESERVATION
 # ============================================================

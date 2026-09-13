@@ -11,3 +11,5 @@ pytest
 pyjwt
 bcrypt
 cryptography
+pytesseract
+Pillow

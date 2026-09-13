@@ -426,6 +426,16 @@ export const api = {
     delete: (id: string) => request<void>(`/api/v1/guests/${id}`, {
       method: 'DELETE',
     }),
+    parseMrz: (mrzText: string) => request<{ parsed: any; guest_fields: any }>(`/api/v1/guests/parse-mrz`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mrz_text: mrzText })
+    }),
+    ocr: (imageBase64: string) => request<{ parsed: any; guest_fields: any }>(`/api/v1/guests/ocr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64: imageBase64 })
+    }),
   },
   users: {
     list: () => request<User[]>(`/api/v1/users`),
