@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { translations } from '@/lib/i18n';
+import { useWorkspace } from '@/components/WorkspaceBar';
 
 export default function DashboardPage() {
+  const { propertyId, dates } = useWorkspace();
   const [lang, setLang] = useState<'ca' | 'es' | 'en'>('ca');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,22 +18,20 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    if (!propertyId) return;  // espera que el WorkspaceBar carregui la propietat
+    const pid = propertyId;  // narrowed a string (dins l'async el tipus no es manté)
     async function loadDashboard() {
       try {
         setLoading(true);
-        const properties = await api.properties.list();
-        if (!properties || properties.length === 0) {
-          setError('No hi ha cap propietat configurada');
-          return;
-        }
-        const propertyId = properties[0].id;
         const today = new Date().toISOString().split('T')[0];
+        const from = dates.from || today;
+        const to = dates.to || today;
 
         const [occRes, revRes, arrRes, depRes] = await Promise.all([
-          api.reports.occupancy({ propertyId, from: today, to: today }),
-          api.reports.revenue({ propertyId, from: today, to: today }),
-          api.reports.arrivals({ date: today }),
-          api.reports.departures({ date: today }),
+          api.reports.occupancy({ propertyId: pid, from, to }),
+          api.reports.revenue({ propertyId: pid, from, to }),
+          api.reports.arrivals({ date: to }),
+          api.reports.departures({ date: to }),
         ]);
 
         setStats({
@@ -40,6 +40,7 @@ export default function DashboardPage() {
           arrivals: Array.isArray(arrRes) ? arrRes.length : 0,
           departures: Array.isArray(depRes) ? depRes.length : 0,
         });
+        setError(null);
       } catch (e) {
         setError('Error carregant el dashboard');
         console.error(e);
@@ -48,7 +49,7 @@ export default function DashboardPage() {
       }
     }
     loadDashboard();
-  }, []);
+  }, [propertyId, dates]);
 
   const t = translations[lang];
 

@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useWorkspace } from '@/components/WorkspaceBar';
 
 export default function FrontDeskPage() {
+  const { propertyId, dates } = useWorkspace();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({
@@ -13,21 +15,18 @@ export default function FrontDeskPage() {
   });
 
   useEffect(() => {
+    if (!propertyId) return;  // espera que el WorkspaceBar carregui la propietat
+    const pid = propertyId;  // narrowed a string (dins l'async el tipus no es manté)
     async function loadFrontDesk() {
       try {
         setLoading(true);
-        const properties = await api.properties.list();
-        if (!properties || properties.length === 0) {
-          setError('No hi ha cap propietat configurada');
-          return;
-        }
-        const propertyId = properties[0].id;
         const today = new Date().toISOString().split('T')[0];
+        const date = dates.to || today;
 
         const [arrRes, depRes, inHouseRes] = await Promise.all([
-          api.reports.arrivals({ date: today }),
-          api.reports.departures({ date: today }),
-          api.reservations.list({ propertyId, status: 'checked_in' }),
+          api.reports.arrivals({ date }),
+          api.reports.departures({ date }),
+          api.reservations.list({ propertyId: pid, status: 'checked_in' }),
         ]);
 
         const occupied = Array.isArray(inHouseRes) ? inHouseRes.length : 0;
@@ -37,6 +36,7 @@ export default function FrontDeskPage() {
           departures: Array.isArray(depRes) ? depRes.length : 0,
           occupied,
         });
+        setError(null);
       } catch (e) {
         setError('Error carregant el front desk');
         console.error(e);
@@ -45,7 +45,7 @@ export default function FrontDeskPage() {
       }
     }
     loadFrontDesk();
-  }, []);
+  }, [propertyId, dates]);
 
   if (loading) return <div className="p-6 text-white">Loading...</div>;
   if (error) return <div className="p-6 text-red-400">{error}</div>;
