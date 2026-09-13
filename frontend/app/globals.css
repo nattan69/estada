@@ -34,3 +34,20 @@ html.dark input, html.dark select, html.dark textarea {
   background-color: #0d1626; color: #e5e9f0; border-color: #24314f;
 }
 html.dark button { color-scheme: dark; }
+
+/* ---------- Mode DIA: text "blanquinós" il·legible sobre BG clar ----------
+   Les pàgines duen text-white hardcodejat (pensat per a fons fosc). En mode
+   dia el convertim a fosc; en mode nit es manté blanc. (Tomeu, 13/09) */
+html:not(.dark) main .text-white {
+  color: #1f2937 !important;
+}
+html:not(.dark) main .text-white * { color: inherit; }
+/* els que volen blanc DE VERITAT (badges sobre fons fosc/daurat) es resalten amb classe propia:
+   .keep-white no es toca */
+html:not(.dark) main .text-white.keep-white { color: #fff !important; }
+/* inputs i selects amb bg-slate-800 dins mode dia → es tornen clars */
+html:not(.dark) main .bg-slate-800 {
+  background-color: #fff !important;
+  color: #1f2937 !important;
+  border-color: #d1d5db !important;
+}
